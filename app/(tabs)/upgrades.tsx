@@ -1,5 +1,3 @@
-// app/(tabs)/upgrades.tsx
-
 import React from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
 // --- Импортируем хук и базу данных улучшений ---
