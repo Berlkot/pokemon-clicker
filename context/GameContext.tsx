@@ -39,22 +39,14 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const savedData = await AsyncStorage.getItem(GAME_DATA_KEY);
         if (savedData !== null) {
-                    setGameState({
-            evolutionEnergy: 0,
-            energyPerClick: 1,
-            energyPerSecond: 0,
-            currentPokemonId: 'eevee',
-            currentPokemonLevel: 40,
-            currentPokemonExp: 0,
-            upgrades: {}, // Изначально нет купленных апгрейдов
-          });
+          setGameState(JSON.parse(savedData));
         } else {
           // Начальное состояние игры
           setGameState({
             evolutionEnergy: 0,
             energyPerClick: 1,
             energyPerSecond: 0,
-            currentPokemonId: 'bulbasaur',
+            currentPokemonId: 'eevee',
             currentPokemonLevel: 1,
             currentPokemonExp: 0,
             upgrades: {}, // Изначально нет купленных апгрейдов
