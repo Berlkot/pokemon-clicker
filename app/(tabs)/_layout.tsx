@@ -1,35 +1,63 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+// app/(tabs)/_layout.tsx
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import React from 'react';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { Link, Tabs } from 'expo-router';
+import { Pressable } from 'react-native';
+import { GameProvider } from '@/context/GameContext';
+
+// Вспомогательная функция для рендеринга иконки.
+function TabBarIcon(props: {
+  name: React.ComponentProps<typeof FontAwesome>['name'];
+  color: string;
+}) {
+  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
+    <GameProvider>
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
+        tabBarActiveTintColor: 'blue', // Цвет активной иконки
       }}>
+      {/* 
+        Первая вкладка. `name="index"` ссылается на файл `index.tsx`.
+        В `options` мы задаем её название и иконку.
+      */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Игра',
+          tabBarIcon: ({ color }) => <TabBarIcon name="gamepad" color={color} />,
+          // Здесь мы можем добавить кнопку в заголовок, например, для вызова модального окна настроек.
+          headerRight: () => (
+            <Link href="/modal" asChild>
+              <Pressable>
+                {({ pressed }) => (
+                  <FontAwesome
+                    name="info-circle"
+                    size={25}
+                    color="gray"
+                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
+                  />
+                )}
+              </Pressable>
+            </Link>
+          ),
         }}
       />
+      {/* 
+        Вторая вкладка. `name="upgrades"` ссылается на файл `upgrades.tsx`.
+      */}
       <Tabs.Screen
-        name="explore"
+        name="upgrades"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Улучшения',
+          tabBarIcon: ({ color }) => <TabBarIcon name="arrow-up" color={color} />,
         }}
       />
     </Tabs>
+    </GameProvider>
   );
 }

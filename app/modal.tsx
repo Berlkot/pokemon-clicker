@@ -1,17 +1,20 @@
-import { Link } from 'expo-router';
-import { StyleSheet } from 'react-native';
+// app/modal.tsx
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { StatusBar } from 'expo-status-bar';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 export default function ModalScreen() {
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title">This is a modal</ThemedText>
-      <Link href="/" dismissTo style={styles.link}>
-        <ThemedText type="link">Go to home screen</ThemedText>
-      </Link>
-    </ThemedView>
+    <View style={styles.container}>
+      <Text style={styles.title}>Об игре</Text>
+      <View style={styles.separator} />
+      <Text style={styles.text}>
+        Это кликер Эволюция Покемонов. Нажимайте на покемона, чтобы копить Энергию Эволюции, и помогайте ему развиваться!
+      </Text>
+
+      {/* Use a light status bar on iOS to account for the black background */}
+      <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
+    </View>
   );
 }
 
@@ -22,8 +25,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  separator: {
+    marginVertical: 30,
+    height: 1,
+    width: '80%',
+    backgroundColor: '#eee',
+  },
+  text: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

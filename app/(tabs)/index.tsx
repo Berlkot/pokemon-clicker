@@ -1,98 +1,140 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { StyleSheet, Text, View, Image, TouchableOpacity } from 'react-native';
+import { useGame } from '../../context/GameContext';
+import { pokemonDatabase } from '../../data/pokemonData';
 
-export default function HomeScreen() {
+
+export default function GameScreen() {
+  const { gameState, setGameState } = useGame();
+
+  // --- ОСНОВНАЯ ЛОГИКА ИГРЫ (САМАЯ ВАЖНАЯ ЧАСТЬ) ---
+  const handlePokemonClick = () => {
+    setGameState(prevState => {
+      if (!prevState) return null;
+
+      let { currentPokemonId, currentPokemonLevel, currentPokemonExp } = prevState;
+
+      // Получаем статические данные текущего покемона из нашей "базы данных".
+      const pokemonData = pokemonDatabase[currentPokemonId];
+      
+      // Рассчитываем, сколько опыта нужно для следующего уровня.
+      const requiredExp = currentPokemonLevel //* 100;
+      
+      let newExp = currentPokemonExp + 1;
+
+      // --- Проверка на повышение уровня ---
+      if (newExp >= requiredExp) {
+        currentPokemonLevel += 1; // Увеличиваем уровень
+        newExp -= requiredExp; // Сбрасываем опыт, сохраняя "излишек"
+
+        // --- Проверка на ЭВОЛЮЦИЮ ---
+        // Если у покемона есть эволюция и мы достигли нужного уровня...
+        if (pokemonData.evolvesTo && currentPokemonLevel >= (pokemonData.evolutionLevel ?? 999)) {
+          // ...меняем ID покемона на ID его следующей формы.
+          currentPokemonId = pokemonData.evolvesTo;
+          // Можно добавить анимацию или какой-то эффект эволюции здесь.
+        }
+      }
+
+      // Возвращаем новое, обновленное состояние.
+      return {
+        ...prevState,
+        evolutionEnergy: prevState.evolutionEnergy + prevState.energyPerClick,
+        currentPokemonId,
+        currentPokemonLevel,
+        currentPokemonExp: newExp,
+      };
+    });
+  };
+
+  // --- РЕНДЕР КОМПОНЕНТА ---
+
+  if (!gameState) {
+    return <View style={styles.container}><Text>Загрузка игры...</Text></View>;
+  }
+
+  // Получаем данные для отображения из нашей базы данных по ID из состояния.
+  const currentPokemonData = pokemonDatabase[gameState.currentPokemonId];
+  const requiredExpForLevelUp = gameState.currentPokemonLevel //* 100;
+  const experiencePercentage = (gameState.currentPokemonExp / requiredExpForLevelUp) * 100;
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <View style={styles.statsContainer}>
+        <Text style={styles.statText}>Энергия Эволюции: {Math.floor(gameState.evolutionEnergy)}</Text>
+        <Text style={styles.statText}>В секунду: {gameState.energyPerSecond}</Text>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <TouchableOpacity style={styles.pokemonButton} onPress={handlePokemonClick}>
+        {/* Изображение и имя берутся из базы данных */}
+        <Image 
+          source={currentPokemonData.image} 
+          style={styles.pokemonImage}
+        />
+        <Text style={styles.pokemonName}>{currentPokemonData.name} (Ур. {gameState.currentPokemonLevel})</Text>
+      </TouchableOpacity>
+      
+      <View style={styles.experienceContainer}>
+        <Text style={styles.expText}>
+          Опыт: {gameState.currentPokemonExp} / {requiredExpForLevelUp}
+        </Text>
+        <View style={styles.expBarBackground}>
+          <View style={[styles.expBarForeground, { width: `${experiencePercentage}%` }]} />
+        </View>
+      </View>
+    </View>
   );
 }
 
+// Стили остаются такими же, как в предыдущем ответе.
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-around',
+    padding: 20,
+    backgroundColor: '#f0f8ff',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  statsContainer: {
+    alignItems: 'center',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  statText: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#333',
+  },
+  pokemonButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pokemonImage: {
+    width: 200,
+    height: 200,
+    resizeMode: 'contain',
+  },
+  pokemonName: {
+    marginTop: 10,
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  experienceContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  expText: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  expBarBackground: {
+    width: '90%',
+    height: 20,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  expBarForeground: {
+    height: '100%',
+    backgroundColor: '#4caf50',
+    borderRadius: 10,
   },
 });
