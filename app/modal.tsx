@@ -1,5 +1,3 @@
-// app/modal.tsx
-
 import { StatusBar } from 'expo-status-bar';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
@@ -12,7 +10,7 @@ export default function ModalScreen() {
         Это кликер Эволюция Покемонов. Нажимайте на покемона, чтобы копить Энергию Эволюции, и помогайте ему развиваться!
       </Text>
 
-      {/* Use a light status bar on iOS to account for the black background */}
+      {}
       <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
     </View>
   );
