@@ -1,8 +1,31 @@
 import React from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
-// --- Импортируем хук и базу данных улучшений ---
 import { useGame } from '../../context/GameContext';
 import { upgradesDatabase, Upgrade } from '../../data/upgradesData';
+import Colors from '../../constants/Colors'; // <-- Импортируем цвета
+import FontAwesome from '@expo/vector-icons/FontAwesome'; // <-- Для иконок
+import Toast from 'react-native-toast-message'; // <-- Для уведомлений (из Части 2)
+
+
+const recalculateStats = (upgrades: { [key: string]: number }) => {
+  let newEnergyPerClick = 1; // Базовое значение
+  let newEnergyPerSecond = 0; // Базовое значение
+
+  // Сначала считаем общую силу клика
+  const clickUpgradeLevel = upgrades['stronger_click'] || 0;
+  newEnergyPerClick += clickUpgradeLevel * upgradesDatabase['stronger_click'].effect.value;
+
+  // Затем, на основе силы клика, считаем пассивный доход
+  const passiveUpgradeLevel = upgrades['pikachu_helper'] || 0;
+  if (passiveUpgradeLevel > 0) {
+    const passiveEffect = upgradesDatabase['pikachu_helper'].effect;
+    // Пассивный доход = (уровень * процент) * текущая_сила_клика
+    newEnergyPerSecond += Math.round(passiveUpgradeLevel * passiveEffect.value * newEnergyPerClick);
+  }
+  
+  return { newEnergyPerClick, newEnergyPerSecond };
+};
+
 
 // Компонент для одного улучшения
 const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
@@ -24,31 +47,31 @@ const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
     setGameState(prevState => {
       if (!prevState) return null;
 
-      const newUpgrades = { ...prevState.upgrades };
-      newUpgrades[upgrade.id] = (newUpgrades[upgrade.id] || 0) + 1;
-
-      let newEnergyPerClick = prevState.energyPerClick;
-      let newEnergyPerSecond = prevState.energyPerSecond;
-
-      // Применяем эффект улучшения
-      if (upgrade.effect.type === 'add_click') {
-        newEnergyPerClick += upgrade.effect.value;
-      } else if (upgrade.effect.type === 'add_passive') {
-        newEnergyPerSecond += upgrade.effect.value;
-      }
+      const newState = { ...prevState };
       
-      return {
-        ...prevState,
-        evolutionEnergy: prevState.evolutionEnergy - cost,
-        energyPerClick: newEnergyPerClick,
-        energyPerSecond: newEnergyPerSecond,
-        upgrades: newUpgrades,
-      };
+      // 1. Списываем энергию и повышаем уровень улучшения
+      newState.evolutionEnergy -= cost;
+      newState.upgrades[upgrade.id] = (newState.upgrades[upgrade.id] || 0) + 1;
+
+      // 2. Вызываем нашу новую функцию для пересчета ВСЕХ статов
+      const { newEnergyPerClick, newEnergyPerSecond } = recalculateStats(newState.upgrades);
+      
+      // 3. Обновляем статы в состоянии
+      newState.energyPerClick = newEnergyPerClick;
+      newState.energyPerSecond = newEnergyPerSecond;
+
+      return newState;
+    });
+    Toast.show({
+      type: 'gameToast',
+      text1: 'Улучшение куплено!',
+      text2: `${upgrade.title} теперь Уровень ${currentLevel + 1}`,
     });
   };
 
   return (
-    <View style={styles.upgradeItem}>
+    <View style={styles.upgradeCard}>
+      <FontAwesome name={upgrade.effect.type === 'add_to_click' ? 'hand-pointer-o' : 'bolt'} size={40} color={Colors.primary} />
       <View style={styles.infoContainer}>
         <Text style={styles.upgradeTitle}>{upgrade.title} (Ур. {currentLevel})</Text>
         <Text style={styles.upgradeDescription}>{upgrade.description}</Text>
@@ -56,8 +79,7 @@ const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
       <TouchableOpacity 
         style={[styles.buyButton, !canAfford && styles.disabledButton]}
         onPress={handlePurchase}
-        disabled={!canAfford}
-      >
+        disabled={!canAfford}>
         <Text style={styles.buyButtonText}>{cost} ЭЭ</Text>
       </TouchableOpacity>
     </View>
@@ -92,10 +114,27 @@ const styles = StyleSheet.create({
   header: { fontSize: 28, fontWeight: 'bold' },
   energyText: { fontSize: 18, color: 'gray', marginTop: 5 },
   upgradeItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f9f9f9', padding: 15, borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: '#eee' },
-  infoContainer: { flex: 1 },
-  upgradeTitle: { fontSize: 18, fontWeight: 'bold' },
-  upgradeDescription: { fontSize: 14, color: 'gray' },
-  buyButton: { backgroundColor: '#2196F3', paddingVertical: 10, paddingHorizontal: 15, borderRadius: 8, marginLeft: 10 },
-  buyButtonText: { color: 'white', fontWeight: 'bold' },
-  disabledButton: { backgroundColor: '#a0a0a0' },
+    upgradeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 12,
+    // Тень для эффекта "карточки"
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  infoContainer: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  upgradeTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.primary },
+  upgradeDescription: { fontSize: 14, color: Colors.darkGray },
+  buyButton: { backgroundColor: Colors.accent, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20 },
+  buyButtonText: { color: Colors.primary, fontWeight: 'bold', fontSize: 16 },
+  disabledButton: { backgroundColor: Colors.lightGray },
 });
