@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Pressable, Platform } from 'react-native';
 import { useGame } from '../../context/GameContext';
 import { upgradesDatabase, Upgrade } from '../../data/upgradesData';
 import Colors from '../../constants/Colors'; // <-- Импортируем цвета
@@ -76,12 +76,22 @@ const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
         <Text style={styles.upgradeTitle}>{upgrade.title} (Ур. {currentLevel})</Text>
         <Text style={styles.upgradeDescription}>{upgrade.description}</Text>
       </View>
-      <TouchableOpacity 
-        style={[styles.buyButton, !canAfford && styles.disabledButton]}
+      <Pressable 
+        // Применяем ripple-эффект. Он будет работать только на Android.
+        android_ripple={{
+          color: Colors.primary, // Цвет волны
+          borderless: true, // Волна может выходить за границы кнопки
+        }}
+        // Для iOS и других платформ можно оставить простой эффект изменения прозрачности
+        style={({ pressed }) => [
+          styles.buyButton,
+          !canAfford && styles.disabledButton,
+          pressed && Platform.OS !== 'android' && { opacity: 0.8 }, // Эффект для iOS
+        ]}
         onPress={handlePurchase}
         disabled={!canAfford}>
         <Text style={styles.buyButtonText}>{cost} ЭЭ</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };
