@@ -1,16 +1,25 @@
 import { StyleSheet, Text, View, Image, Pressable, Animated, useWindowDimensions, Alert, BackHandler } from 'react-native';
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, memo, useMemo } from 'react';
 import { useGame } from '../../context/GameContext';
 import { pokemonDatabase } from '../../data/pokemonData';
 import Colors from '../../constants/Colors';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
-
+import { formatNumber } from '../../utils/formatNumber'; // <-- Импортируем наш форматер
+import { Audio } from 'expo-av';
 
 type FloatingNumber = {
-  id: number; value: number; animation: Animated.Value;
-  startX: number; startY: number;
+  id: number;
+  value: number;
+  animation: Animated.Value;
+  startX: number;
+  startY: number;
 };
+
+
+const CRIT_CHANCE = 0.1; // 10% шанс
+const CRIT_MULTIPLIER = 5; // Умножает энергию в 5 раз
+
 
 // --- КОНСТАНТЫ ДЛЯ АНИМАЦИИ ---
 const POKEMON_SIZE = 250;
@@ -27,6 +36,28 @@ type PikachuSprite = {
   y: number; // Позиция по вертикали
 };
 
+
+const PikachuSpriteComponent = memo(function PikachuSpriteComponent({ sprite }: { sprite: PikachuSprite }) {
+  const translateY = sprite.animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -10],
+  });
+
+  return (
+    <Animated.Image
+      source={require('../../assets/images/pikachu.png')}
+      style={[
+        styles.pikachuSprite,
+        {
+          left: sprite.x,
+          top: sprite.y,
+          transform: [{ translateY }],
+        },
+      ]}
+    />
+  );
+});
+
 export default function GameScreen() {
   const { gameState, setGameState } = useGame();
   const { width, height } = useWindowDimensions(); // <-- Получаем размеры экрана
@@ -38,26 +69,63 @@ export default function GameScreen() {
   // --- АНИМАЦИИ ---
   const scaleAnimation = useRef(new Animated.Value(1)).current;
   const translateAnimation = useRef(new Animated.Value(0)).current;
+  const sound = useRef<Audio.Sound | null>(null); 
   const colorAnimationDriver = useRef(new Animated.Value(0)).current;
   const previousBgColor = useRef(Colors.stageColors[0]);
   const previousAccentColor = useRef(Colors.stageAccentColors[0]);
 
-  // --- ЛОГИКА АНИМАЦИЙ ---
-  const onPressIn = () => {
-    Animated.parallel([
-      Animated.spring(scaleAnimation, { toValue: SQUEEZE_SCALE_Y, useNativeDriver: true }),
-      Animated.spring(translateAnimation, { toValue: SQUEEZE_TRANSLATE_Y, useNativeDriver: true }),
-    ]).start();
-  };
-  const onPressOut = () => {
-    Animated.parallel([
-      Animated.spring(scaleAnimation, { toValue: 1, useNativeDriver: true }),
-      Animated.spring(translateAnimation, { toValue: 0, useNativeDriver: true }),
+  const levelUpAnimation = useRef(new Animated.Value(0)).current;
+
+  const triggerLevelUpAnimation = () => {
+    levelUpAnimation.setValue(0); // Сбрасываем анимацию
+    Animated.sequence([
+      Animated.timing(levelUpAnimation, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(levelUpAnimation, { toValue: 0, duration: 1000, useNativeDriver: true, delay: 800 }),
     ]).start();
   };
 
+  const triggerClickAnimation = () => {
+
+
+    // Запускаем последовательность: сначала сжатие, потом разжатие
+    Animated.sequence([
+      // 1. Анимация сжатия (происходит параллельно по двум осям)
+      Animated.parallel([
+        Animated.timing(scaleAnimation, { toValue: SQUEEZE_SCALE_Y, duration: 75, useNativeDriver: true }),
+        Animated.timing(translateAnimation, { toValue: SQUEEZE_TRANSLATE_Y, duration: 75, useNativeDriver: true }),
+      ]),
+      // 2. Анимация разжатия (используем spring для эффекта "отскока")
+      Animated.parallel([
+        Animated.spring(scaleAnimation, { toValue: 1, friction: 3, useNativeDriver: true }),
+        Animated.spring(translateAnimation, { toValue: 0, friction: 3, useNativeDriver: true }),
+      ]),
+    ]).start();
+  };
+
+  useEffect(() => {
+    // Асинхронная функция для загрузки звука в память
+    const loadSound = async () => {
+      try {
+        const { sound: newSound } = await Audio.Sound.createAsync(
+           require('../../assets/sounds/click.mp3') // Укажите правильный путь к вашему файлу
+        );
+        sound.current = newSound;
+      } catch (error) {
+        console.error("Failed to load sound", error);
+      }
+    };
+
+    loadSound();
+
+    // Функция очистки: выгружаем звук, когда компонент исчезает
+    return () => {
+      if (sound.current) {
+        sound.current.unloadAsync();
+      }
+    };
+  }, []);
   // Эффект, который следит за сменой покемона и запускает анимацию фона
- useEffect(() => {
+  useEffect(() => {
     if (!gameState) return;
 
     // Безопасно получаем данные покемона
@@ -80,7 +148,7 @@ export default function GameScreen() {
     previousAccentColor.current = newAccentColor;
   }, [colorAnimationDriver, gameState, gameState?.currentPokemonId]);
 
-  const createFloatingNumber = useCallback((value: number) => {
+  const createFloatingNumber = useCallback((value: number, isCrit: boolean = false) => {
     const spawnArea = 150; // Область появления чисел (в пикселях)
     
     const newNumber: FloatingNumber = {
@@ -91,7 +159,12 @@ export default function GameScreen() {
       startY: Math.random() * spawnArea,
     };
 
-    setFloatingNumbers(current => [...current, newNumber]);
+    setFloatingNumbers(current => {
+      if (current.length > 20) {
+        return [...current.slice(1), newNumber];
+      }
+      return [...current, newNumber];
+    });
 
     Animated.timing(newNumber.animation, {
       toValue: 1,
@@ -125,6 +198,23 @@ export default function GameScreen() {
       // чтобы кнопка "Назад" работала как обычно на других экранах (например, в Улучшениях).
       return () => subscription.remove();
     }, [])
+  );
+  
+  useFocusEffect(
+    useCallback(() => {
+      if (!gameState || gameState.energyPerSecond === 0) {
+        return;
+      }
+      
+      const interval = setInterval(() => {
+        setGameState(prevState => {
+          if (!prevState) return null;
+          return { ...prevState, evolutionEnergy: prevState.evolutionEnergy + prevState.energyPerSecond };
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }, [gameState, setGameState]) // Зависимость, чтобы интервал перезапустился при покупке улучшения
   );
 
 
@@ -182,10 +272,25 @@ export default function GameScreen() {
 
   }, [gameState, height, pikachuSprites, width]);
 
-  const handlePokemonClick = () => {
+  const handlePokemonClick = async () => {
     if (!gameState) return;
+    try {
+      await sound.current?.replayAsync();
+    } catch (error) {
+      console.error("Failed to play sound", error);
+    }
+    
+    triggerClickAnimation();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    createFloatingNumber(gameState.energyPerClick);
+    
+    let energyGained = gameState.energyPerClick;
+    const isCrit = Math.random() < CRIT_CHANCE;
+
+    if (isCrit) {
+      energyGained *= CRIT_MULTIPLIER;
+    }
+    
+    createFloatingNumber(Math.round(energyGained), isCrit);
     
     setGameState(prevState => {
       if (!prevState) return null;
@@ -196,12 +301,13 @@ export default function GameScreen() {
       const pokemonData = pokemonDatabase[currentPokemonId];
       if (!pokemonData) return prevState; // Если что-то не так, не меняем состояние и предотвращаем сбой
 
-      const requiredExp = currentPokemonLevel * 100;
-      let newExp = currentPokemonExp + 1;
+      const requiredExp = requiredExpForLevelUp;
+      let newExp = currentPokemonExp + Math.round(gameState.energyPerClick);
 
       if (newExp >= requiredExp) {
         currentPokemonLevel += 1;
         newExp -= requiredExp;
+        triggerLevelUpAnimation(); 
         if (pokemonData.evolvesTo && currentPokemonLevel >= (pokemonData.evolutionLevel ?? 999)) {
           currentPokemonId = pokemonData.evolvesTo;
         }
@@ -217,65 +323,50 @@ export default function GameScreen() {
     });
   };
   
+  const currentPokemonData = (gameState && pokemonDatabase[gameState.currentPokemonId]) || defaultPokemonData;
+
+  const animatedBackgroundColor = useMemo(() => colorAnimationDriver.interpolate({
+    inputRange: [0, 1],
+    outputRange: [previousBgColor.current, Colors.stageColors[currentPokemonData.evolutionStage - 1]],
+  }), [colorAnimationDriver, currentPokemonData.evolutionStage]); // <-- Зависимость: пересчитать только при смене покемона
+
+  const animatedAccentColor = useMemo(() => colorAnimationDriver.interpolate({
+    inputRange: [0, 1],
+    outputRange: [previousAccentColor.current, Colors.stageAccentColors[currentPokemonData.evolutionStage - 1]],
+  }), [colorAnimationDriver, currentPokemonData.evolutionStage]); // <-- Зависимость: пересчитать только при смене покемона
+
   if (!gameState) {
     return <View style={styles.container}><Text>Загрузка игры...</Text></View>;
   }
-
-  // --- ГЛАВНОЕ ИСПРАВЛЕНИЕ: ЕДИНАЯ ТОЧКА БЕЗОПАСНОГО ДОСТУПА К ДАННЫМ ---
-  const currentPokemonData = pokemonDatabase[gameState.currentPokemonId] || defaultPokemonData;
-
   // Теперь все последующие вычисления используют эту безопасную переменную
-  const requiredExpForLevelUp = gameState.currentPokemonLevel * 100;
+  const requiredExpForLevelUp = Math.floor(100 * Math.pow(gameState.currentPokemonLevel, 1.5));
   const experiencePercentage = (gameState.currentPokemonExp / requiredExpForLevelUp) * 100;
 
-  // Интерполяции тоже становятся безопасными
-  const animatedBackgroundColor = colorAnimationDriver.interpolate({
-    inputRange: [0, 1],
-    outputRange: [previousBgColor.current, Colors.stageColors[currentPokemonData.evolutionStage - 1]],
-  });
-  const animatedAccentColor = colorAnimationDriver.interpolate({
-    inputRange: [0, 1],
-    outputRange: [previousAccentColor.current, Colors.stageAccentColors[currentPokemonData.evolutionStage - 1]],
-  });
+  const levelUpScale = levelUpAnimation.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.2] });
+  const levelUpOpacity = levelUpAnimation.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
   
   return (
     <Animated.View style={[styles.container, { backgroundColor: animatedBackgroundColor }]}>
 
       <View style={[StyleSheet.absoluteFillObject, styles.spriteContainer]}>
-        {pikachuSprites.map(sprite => {
-          // Интерполяция для "покачивания"
-          const translateY = sprite.animation.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, -10], // Двигается вверх на 10 пикселей
-          });
-          return (
-            <Animated.Image
-              key={sprite.id}
-              source={require('../../assets/images/pikachu.png')}
-              style={[
-                styles.pikachuSprite,
-                {
-                  left: sprite.x,
-                  top: sprite.y,
-                  transform: [{ translateY }],
-                },
-              ]}
-            />
-          );
-        })}
+        {pikachuSprites.map(sprite => (
+          <PikachuSpriteComponent key={sprite.id} sprite={sprite} />
+        ))}
       </View>
 
       <View style={styles.statsContainer}>
-        <Text style={styles.statText}>Энергия Эволюции: {Math.floor(gameState.evolutionEnergy)}</Text>
-        <Text style={styles.statText}>В секунду: {gameState.energyPerSecond}</Text>
+        <Text style={styles.statText}>Энергия Эволюции: {formatNumber(gameState.evolutionEnergy)}</Text>
+        <Text style={styles.statText}>В секунду: {formatNumber(gameState.energyPerSecond)}</Text>
       </View>
       
       {/* --- ЭТОТ КОНТЕЙНЕР РЕШАЕТ ОБЕ ПРОБЛЕМЫ --- */}
       <View style={styles.pokemonContainer}>
         <Text style={styles.pokemonName}>{currentPokemonData.name} (Ур. {gameState.currentPokemonLevel})</Text>
-
+        <Animated.Text style={[styles.levelUpText, { opacity: levelUpOpacity, transform: [{ scale: levelUpScale }] }]}>
+          LEVEL UP!
+        </Animated.Text>
         <Animated.View style={{ transform: [{ scaleY: scaleAnimation }, { translateY: translateAnimation }] }}>
-          <Pressable onPress={handlePokemonClick} onPressIn={onPressIn} onPressOut={onPressOut}>
+          <Pressable onPress={handlePokemonClick}>
             <Image source={currentPokemonData.image} style={styles.pokemonImage} />
           </Pressable>
       
@@ -286,21 +377,23 @@ export default function GameScreen() {
         {floatingNumbers.map(({ id, value, animation, startX, startY }) => {
           const translateY = animation.interpolate({ inputRange: [0, 1], outputRange: [0, -100] });
           const opacity = animation.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 1, 0] });
+          const isCritical = value > (gameState.energyPerClick + 1);
           return (
             <Animated.Text
               key={id}
               style={[
-                styles.floatingNumber,
+                styles.floatingNumber, // <-- Базовый стиль
+                isCritical && styles.critFloatingNumber, // <-- Дополнительный стиль для крита
                 {
                   left: startX,
                   top: startY,
                   transform: [{ translateY }],
                   opacity,
-                  color: animatedAccentColor, // <-- Применяем анимированный цвет!
+                  color: isCritical ? Colors.danger : animatedAccentColor, // <-- Применяем анимированный цвет!
                 },
               ]}
             >
-              +{value}
+              +{formatNumber(value)}{isCritical ? '!!' : ''}
             </Animated.Text>
           );
         })}
@@ -326,6 +419,10 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     alignItems: 'center',
+  },
+  critFloatingNumber: {
+    fontSize: 32, // Крупнее
+    fontWeight: '900', // Жирнее
   },
   statText: {
     fontSize: 22,
@@ -377,6 +474,15 @@ const styles = StyleSheet.create({
   expText: {
     fontSize: 16,
     marginBottom: 5,
+  },
+  levelUpText: {
+    position: 'absolute',
+    fontSize: 48,
+    fontWeight: '900',
+    color: Colors.accent,
+    textShadowColor: Colors.primary,
+    textShadowRadius: 10,
+    textShadowOffset: { width: 0, height: 0 },
   },
   expBarBackground: {
     width: '90%',

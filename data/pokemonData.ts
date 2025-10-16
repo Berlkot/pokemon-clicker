@@ -14,7 +14,7 @@ export const pokemonDatabase: Record<string, PokemonData> = {
   'eevee': {
     id: 'eevee',
     name: 'Иивии',
-    image: require('../assets/images/eevee1.png'), // Предполагается, что у вас есть картинки 001.png, 002.png и т.д.
+    image: require('../assets/images/eevee1.png'), 
     evolvesTo: 'espeon',
     evolutionLevel: 5,
     evolutionStage: 1,
@@ -30,6 +30,7 @@ export const pokemonDatabase: Record<string, PokemonData> = {
   'umbreon': {
     id: 'umbreon',
     name: 'Умбреон',
+    evolvesTo: 'sylveon',
     image: require('../assets/images/eevee3.png'),
     evolutionLevel: 18,
     evolutionStage: 3,
@@ -38,8 +39,7 @@ export const pokemonDatabase: Record<string, PokemonData> = {
     id: 'sylveon',
     name: 'Сильвеон',
     image: require('../assets/images/eevee4.png'),
-    evolutionLevel: 18,
-    evolutionStage: 3,
+    evolutionLevel: 25,
+    evolutionStage: 4,
   }
-  // ... сюда можно добавить других покемонов
 };
