@@ -1,20 +1,45 @@
+// app/_layout.tsx
+
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import Toast from 'react-native-toast-message';
+import Colors from '../constants/Colors';
+import { View, Text } from 'react-native'; // <-- ДОБАВЛЕНО: Импорт View и Text
+import { GameProvider } from '@/context/GameContext';
 
-// Эта часть кода предотвращает автоматическое скрытие экрана-заставки
-// до того, как все ресурсы (например, шрифты) будут загружены.
-export {
-  ErrorBoundary,
-} from 'expo-router';
+export { ErrorBoundary } from 'expo-router';
+export const unstable_settings = { initialRouteName: '(tabs)' };
+SplashScreen.preventAutoHideAsync();
 
-export const unstable_settings = {
-  initialRouteName: '(tabs)',
+// --- КОНФИГУРАЦИЯ ДЛЯ TOAST (ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ) ---
+const toastConfig = {
+  gameToast: ({ text1, text2 }: any) => (
+    <View style={{
+      width: '90%',
+      marginTop: 10,
+      paddingHorizontal: 15,
+      paddingVertical: 10,
+      backgroundColor: '#fff',
+      borderRadius: 8,
+      borderLeftColor: Colors.accent,
+      borderLeftWidth: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+    }}>
+      <Text style={{ fontSize: 16, fontWeight: 'bold', color: Colors.success }}>
+        {text1}
+      </Text>
+      {text2 && <Text style={{ fontSize: 14, color: Colors.primary, marginTop: 3 }}>{text2}</Text>}
+    </View>
+  ),
 };
 
-SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -41,20 +66,13 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   return (
-    // Stack навигатор является основой для переходов между экранами.
-    // Он работает как стопка карт: новый экран кладется поверх старого.
-    <Stack>
-      {/* 
-        Основной экран приложения - это группа (tabs).
-        Мы скрываем его заголовок, так как навигация будет осуществляться через табы.
-      */}
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      
-      {/* 
-        Это модальный экран. `presentation: 'modal'` заставляет его
-        появляться снизу вверх, как это принято для настроек.
-      */}
-      <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Настройки' }} />
-    </Stack>
+    // Оборачиваем ВСЕ приложение в GameProvider
+    <GameProvider>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Настройки' }} />
+      </Stack>
+      <Toast config={toastConfig} position="top" topOffset={60} />
+    </GameProvider>
   );
 }

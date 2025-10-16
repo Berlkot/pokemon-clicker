@@ -17,17 +17,26 @@ interface GameState {
   upgrades: UpgradesState;
 }
 
-// Что будет предоставлять наш контекст: состояние и функция для его обновления.
+const INITIAL_GAME_STATE: GameState = {
+  evolutionEnergy: 0,
+  energyPerClick: 1,
+  energyPerSecond: 0,
+  currentPokemonId: 'eevee',
+  currentPokemonLevel: 1,
+  currentPokemonExp: 0,
+  upgrades: {},
+};
+
+// --- ОБНОВИМ ИНТЕРФЕЙС КОНТЕКСТА ---
 interface IGameContext {
   gameState: GameState | null;
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
-  // В будущем сюда можно добавить более специфичные функции, например, purchaseUpgrade()
+  resetGame: () => Promise<void>; // <-- Добавляем новую функцию
 }
 
-// Создаем сам контекст с начальным значением undefined.
 const GameContext = createContext<IGameContext | undefined>(undefined);
-
 const GAME_DATA_KEY = '@PokemonEvolution:gameData';
+
 
 // Создаем "Провайдер" - компонент, который будет хранить состояние и "раздавать" его дочерним элементам.
 export const GameProvider = ({ children }: { children: React.ReactNode }) => {
@@ -41,16 +50,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         if (savedData !== null) {
           setGameState(JSON.parse(savedData));
         } else {
-          // Начальное состояние игры
-          setGameState({
-            evolutionEnergy: 0,
-            energyPerClick: 1,
-            energyPerSecond: 0,
-            currentPokemonId: 'eevee',
-            currentPokemonLevel: 1,
-            currentPokemonExp: 0,
-            upgrades: {}, // Изначально нет купленных апгрейдов
-          });
+          setGameState(INITIAL_GAME_STATE);
         }
       } catch (error) {
         console.error("Ошибка при загрузке данных:", error);
@@ -76,8 +76,21 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     return () => clearInterval(interval);
   }, [gameState, gameState?.energyPerSecond]);
 
+  const resetGame = async () => {
+    try {
+      // 1. Удаляем сохраненные данные из хранилища
+      await AsyncStorage.removeItem(GAME_DATA_KEY);
+      // 2. Устанавливаем состояние игры в начальное
+      setGameState(INITIAL_GAME_STATE);
+      console.log('Прогресс успешно сброшен!');
+    } catch (error) {
+      console.error('Ошибка при сбросе прогресса:', error);
+    }
+  };
+
+
   return (
-    <GameContext.Provider value={{ gameState, setGameState }}>
+    <GameContext.Provider value={{ gameState, setGameState, resetGame }}>
       {children}
     </GameContext.Provider>
   );

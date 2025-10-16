@@ -1,10 +1,15 @@
+// app/(tabs)/_layout.tsx
+
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Link, Tabs } from 'expo-router';
 import { Pressable } from 'react-native';
-import { GameProvider } from '@/context/GameContext';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 
-// Вспомогательная функция для рендеринга иконки.
+import { useGame } from '../../context/GameContext';
+import Colors from '../../constants/Colors';
+import { pokemonDatabase } from '../../data/pokemonData';
+
+// Компонент иконки (без изменений)
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof FontAwesome>['name'];
   color: string;
@@ -12,23 +17,34 @@ function TabBarIcon(props: {
   return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
 }
 
-export default function TabLayout() {
+// Внутренний компонент для доступа к контексту (без изменений)
+export default function TabsLayout() {
+  const { gameState } = useGame();
+
+const pokemonData = gameState ? pokemonDatabase[gameState.currentPokemonId] : undefined;
+const activeColor = pokemonData ? Colors.stageAccentColors[pokemonData.evolutionStage - 1] : Colors.primary;
   return (
-    <GameProvider>
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: 'blue', // Цвет активной иконки
+        tabBarActiveTintColor: activeColor,
+
+        // --- НОВЫЕ СТИЛИ ДЛЯ РЕШЕНИЯ ПРОБЛЕМЫ ---
+        
+        // 1. Устанавливаем цвет для НЕАКТИВНЫХ иконок и текста.
+        // Полупрозрачный белый будет хорошо смотреться на темном фоне.
+        tabBarInactiveTintColor: 'rgba(83, 83, 83, 0.5)',
+
+        // 2. Стилизуем саму панель навигации (футер).
+        tabBarStyle: {
+          backgroundColor: "#fff", // <-- Устанавливаем наш синий фон
+          borderTopWidth: 0, // Убираем тонкую серую линию сверху для чистоты вида
+        },
       }}>
-      {/* 
-        Первая вкладка. `name="index"` ссылается на файл `index.tsx`.
-        В `options` мы задаем её название и иконку.
-      */}
       <Tabs.Screen
         name="index"
         options={{
           title: 'Игра',
           tabBarIcon: ({ color }) => <TabBarIcon name="gamepad" color={color} />,
-          // Здесь мы можем добавить кнопку в заголовок, например, для вызова модального окна настроек.
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
@@ -45,9 +61,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* 
-        Вторая вкладка. `name="upgrades"` ссылается на файл `upgrades.tsx`.
-      */}
       <Tabs.Screen
         name="upgrades"
         options={{
@@ -56,6 +69,5 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
-    </GameProvider>
   );
 }
