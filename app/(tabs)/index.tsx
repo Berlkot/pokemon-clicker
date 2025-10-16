@@ -1,9 +1,10 @@
-import { StyleSheet, Text, View, Image, Pressable, Animated, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, Image, Pressable, Animated, useWindowDimensions, Alert, BackHandler } from 'react-native';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useGame } from '../../context/GameContext';
 import { pokemonDatabase } from '../../data/pokemonData';
 import Colors from '../../constants/Colors';
 import * as Haptics from 'expo-haptics';
+import { useFocusEffect } from 'expo-router';
 
 
 type FloatingNumber = {
@@ -100,6 +101,32 @@ export default function GameScreen() {
       setFloatingNumbers(current => current.filter(n => n.id !== newNumber.id));
     });
   }, []);
+
+    useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // Показываем диалоговое окно
+        Alert.alert(
+          "Выход из игры",
+          "Вы уверены, что хотите выйти?",
+          [
+            { text: "Остаться", style: "cancel", onPress: () => null },
+            { text: "Выйти", style: "destructive", onPress: () => BackHandler.exitApp() } // Закрываем приложение
+          ]
+        );
+        // `return true` говорит системе Android: "Я обработал это нажатие, не делай ничего больше" (т.е. не закрывай приложение).
+        return true;
+      };
+
+      // Добавляем "слушателя" события
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      // Функция очистки: когда пользователь уходит с экрана, мы удаляем "слушателя",
+      // чтобы кнопка "Назад" работала как обычно на других экранах (например, в Улучшениях).
+      return () => subscription.remove();
+    }, [])
+  );
+
 
   useEffect(() => {
     if (!gameState) return;
