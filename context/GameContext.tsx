@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 
 // Определяем, как будет выглядеть состояние наших улучшений (ID апгрейда и его уровень).
 interface UpgradesState {
@@ -8,6 +9,7 @@ interface UpgradesState {
 
 // Наш основной интерфейс состояния игры.
 interface GameState {
+  lastSavedTime: number;
   evolutionEnergy: number;
   energyPerClick: number;
   energyPerSecond: number;
@@ -18,6 +20,7 @@ interface GameState {
 }
 
 const INITIAL_GAME_STATE: GameState = {
+  lastSavedTime: Date.now(),
   evolutionEnergy: 0,
   energyPerClick: 1,
   energyPerSecond: 0,
@@ -46,9 +49,25 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const loadGameData = async () => {
       try {
-        const savedData = await AsyncStorage.getItem(GAME_DATA_KEY);
-        if (savedData !== null) {
-          setGameState(JSON.parse(savedData));
+        const savedDataJson = await AsyncStorage.getItem(GAME_DATA_KEY);
+        if (savedDataJson !== null) {
+          let savedData: GameState = JSON.parse(savedDataJson);
+
+          // --- ИСПРАВЛЕНИЕ ОФФЛАЙН-ПРОГРЕССА ---
+          const timeOfflineInSeconds = (Date.now() - savedData.lastSavedTime) / 1000;
+          const offlineEarnings = timeOfflineInSeconds * savedData.energyPerSecond;
+
+          if (offlineEarnings > 1) { // Начисляем, только если заработано что-то значимое
+            savedData.evolutionEnergy += offlineEarnings;
+            // Показываем уведомление о заработке
+            Toast.show({
+              type: 'gameToast',
+              text1: 'С возвращением!',
+              text2: `За время вашего отсутствия вы заработали ${Math.floor(offlineEarnings)} энергии!`,
+            });
+          }
+          
+          setGameState(savedData);
         } else {
           setGameState(INITIAL_GAME_STATE);
         }
@@ -61,7 +80,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (gameState) {
-      AsyncStorage.setItem(GAME_DATA_KEY, JSON.stringify(gameState));
+      const stateToSave = { ...gameState, lastSavedTime: Date.now() };
+      AsyncStorage.setItem(GAME_DATA_KEY, JSON.stringify(stateToSave));
     }
   }, [gameState]);
 
@@ -78,9 +98,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
   const resetGame = async () => {
     try {
-      // 1. Удаляем сохраненные данные из хранилища
       await AsyncStorage.removeItem(GAME_DATA_KEY);
-      // 2. Устанавливаем состояние игры в начальное
       setGameState(INITIAL_GAME_STATE);
       console.log('Прогресс успешно сброшен!');
     } catch (error) {

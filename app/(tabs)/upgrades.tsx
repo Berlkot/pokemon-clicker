@@ -5,6 +5,7 @@ import { upgradesDatabase, Upgrade } from '../../data/upgradesData';
 import Colors from '../../constants/Colors'; // <-- Импортируем цвета
 import FontAwesome from '@expo/vector-icons/FontAwesome'; // <-- Для иконок
 import Toast from 'react-native-toast-message'; // <-- Для уведомлений (из Части 2)
+import { formatNumber } from '../../utils/formatNumber';
 
 
 const recalculateStats = (upgrades: { [key: string]: number }) => {
@@ -90,7 +91,7 @@ const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
         ]}
         onPress={handlePurchase}
         disabled={!canAfford}>
-        <Text style={styles.buyButtonText}>{cost} ЭЭ</Text>
+        <Text style={styles.buyButtonText}>{formatNumber(cost)} ЭЭ</Text>
       </Pressable>
     </View>
   );
@@ -107,7 +108,7 @@ export default function UpgradesScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.headerContainer}>
         <Text style={styles.header}>Магазин улучшений</Text>
-        <Text style={styles.energyText}>Ваша энергия: {Math.floor(gameState.evolutionEnergy)}</Text>
+        <Text style={styles.energyText}>Ваша энергия: {formatNumber(gameState.evolutionEnergy)}</Text>
       </View>
       
       {/* Динамически рендерим все улучшения из нашей базы данных */}
