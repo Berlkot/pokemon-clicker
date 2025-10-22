@@ -77,11 +77,13 @@ export default function GameScreen() {
   const levelUpAnimation = useRef(new Animated.Value(0)).current;
 
   const triggerLevelUpAnimation = () => {
-    levelUpAnimation.setValue(0); // Сбрасываем анимацию
-    Animated.sequence([
-      Animated.timing(levelUpAnimation, { toValue: 1, duration: 400, useNativeDriver: true }),
-      Animated.timing(levelUpAnimation, { toValue: 0, duration: 1000, useNativeDriver: true, delay: 800 }),
-    ]).start();
+    requestAnimationFrame(() => {
+      levelUpAnimation.setValue(0); // Сбрасываем анимацию
+      Animated.sequence([
+        Animated.timing(levelUpAnimation, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(levelUpAnimation, { toValue: 0, duration: 1000, useNativeDriver: true, delay: 800 }),
+      ]).start();
+    });
   };
 
   const triggerClickAnimation = () => {
@@ -359,14 +361,13 @@ export default function GameScreen() {
         <Text style={styles.statText}>В секунду: {formatNumber(gameState.energyPerSecond)}</Text>
       </View>
       
-      {/* --- ЭТОТ КОНТЕЙНЕР РЕШАЕТ ОБЕ ПРОБЛЕМЫ --- */}
       <View style={styles.pokemonContainer}>
         <Text style={styles.pokemonName}>{currentPokemonData.name} (Ур. {gameState.currentPokemonLevel})</Text>
         <Animated.Text style={[styles.levelUpText, { opacity: levelUpOpacity, transform: [{ scale: levelUpScale }] }]}>
           LEVEL UP!
         </Animated.Text>
         <Animated.View style={{ transform: [{ scaleY: scaleAnimation }, { translateY: translateAnimation }] }}>
-          <Pressable onPress={handlePokemonClick}>
+          <Pressable onPress={handlePokemonClick} testID="pokemon-pressable">
             <Image source={currentPokemonData.image} style={styles.pokemonImage} />
           </Pressable>
       

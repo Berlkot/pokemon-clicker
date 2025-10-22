@@ -46,7 +46,7 @@ export default function ModalScreen() {
       </Text>
 
       {/* --- НАША НОВАЯ КНОПКА --- */}
-      <Pressable style={styles.resetButton} onPress={handleResetPress}>
+      <Pressable style={styles.resetButton} onPress={handleResetPress} testID="reset-progress-button">
         <Text style={styles.resetButtonText}>Сбросить прогресс</Text>
       </Pressable>
 
