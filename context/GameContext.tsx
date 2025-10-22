@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import { formatNumber } from '@/utils/formatNumber';
 
 // Определяем, как будет выглядеть состояние наших улучшений (ID апгрейда и его уровень).
 interface UpgradesState {
@@ -31,13 +32,13 @@ const INITIAL_GAME_STATE: GameState = {
 };
 
 // --- ОБНОВИМ ИНТЕРФЕЙС КОНТЕКСТА ---
-interface IGameContext {
+export interface IGameContext {
   gameState: GameState | null;
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
   resetGame: () => Promise<void>; // <-- Добавляем новую функцию
 }
 
-const GameContext = createContext<IGameContext | undefined>(undefined);
+export const GameContext = createContext<IGameContext | undefined>(undefined);
 const GAME_DATA_KEY = '@PokemonEvolution:gameData';
 
 
@@ -63,7 +64,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
             Toast.show({
               type: 'gameToast',
               text1: 'С возвращением!',
-              text2: `За время вашего отсутствия вы заработали ${Math.floor(offlineEarnings)} энергии!`,
+              text2: `За время вашего отсутствия вы заработали ${formatNumber(Math.floor(offlineEarnings))} энергии!`,
             });
           }
           
@@ -100,7 +101,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await AsyncStorage.removeItem(GAME_DATA_KEY);
       setGameState(INITIAL_GAME_STATE);
-      console.log('Прогресс успешно сброшен!');
     } catch (error) {
       console.error('Ошибка при сбросе прогресса:', error);
     }

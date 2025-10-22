@@ -8,7 +8,7 @@ import Toast from 'react-native-toast-message'; // <-- Для уведомлен
 import { formatNumber } from '../../utils/formatNumber';
 
 
-const recalculateStats = (upgrades: { [key: string]: number }) => {
+export const recalculateStats = (upgrades: { [key: string]: number }) => {
   let newEnergyPerClick = 1; // Базовое значение
   let newEnergyPerSecond = 0; // Базовое значение
 
@@ -18,10 +18,11 @@ const recalculateStats = (upgrades: { [key: string]: number }) => {
 
   // Затем, на основе силы клика, считаем пассивный доход
   const passiveUpgradeLevel = upgrades['pikachu_helper'] || 0;
+  
   if (passiveUpgradeLevel > 0) {
     const passiveEffect = upgradesDatabase['pikachu_helper'].effect;
     // Пассивный доход = (уровень * процент) * текущая_сила_клика
-    newEnergyPerSecond += Math.round(passiveUpgradeLevel * passiveEffect.value * newEnergyPerClick);
+    newEnergyPerSecond += passiveUpgradeLevel * passiveEffect.value * newEnergyPerClick
   }
   
   return { newEnergyPerClick, newEnergyPerSecond };
