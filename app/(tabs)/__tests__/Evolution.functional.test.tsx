@@ -7,7 +7,7 @@ jest.mock('expo-router', () => ({
   ...jest.requireActual('expo-router'),
   useFocusEffect: jest.fn(),
 }));
-jest.mock('expo-av');
+jest.mock('expo-audio');
 jest.mock('expo-haptics');
 
 

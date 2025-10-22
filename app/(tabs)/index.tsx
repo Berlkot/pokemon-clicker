@@ -6,7 +6,7 @@ import Colors from '../../constants/Colors';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect } from 'expo-router';
 import { formatNumber } from '../../utils/formatNumber'; // <-- Импортируем наш форматер
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 
 type FloatingNumber = {
   id: number;
@@ -69,7 +69,7 @@ export default function GameScreen() {
   // --- АНИМАЦИИ ---
   const scaleAnimation = useRef(new Animated.Value(1)).current;
   const translateAnimation = useRef(new Animated.Value(0)).current;
-  const sound = useRef<Audio.Sound | null>(null); 
+  const player = useAudioPlayer(require('../../assets/sounds/click.mp3'));
   const colorAnimationDriver = useRef(new Animated.Value(0)).current;
   const previousBgColor = useRef(Colors.stageColors[0]);
   const previousAccentColor = useRef(Colors.stageAccentColors[0]);
@@ -103,29 +103,6 @@ export default function GameScreen() {
       ]),
     ]).start();
   };
-
-  useEffect(() => {
-    // Асинхронная функция для загрузки звука в память
-    const loadSound = async () => {
-      try {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-           require('../../assets/sounds/click.mp3') // Укажите правильный путь к вашему файлу
-        );
-        sound.current = newSound;
-      } catch (error) {
-        console.error("Failed to load sound", error);
-      }
-    };
-
-    loadSound();
-
-    // Функция очистки: выгружаем звук, когда компонент исчезает
-    return () => {
-      if (sound.current) {
-        sound.current.unloadAsync();
-      }
-    };
-  }, []);
   // Эффект, который следит за сменой покемона и запускает анимацию фона
   useEffect(() => {
     if (!gameState) return;
@@ -277,7 +254,8 @@ export default function GameScreen() {
   const handlePokemonClick = async () => {
     if (!gameState) return;
     try {
-      await sound.current?.replayAsync();
+      player.seekTo(0);
+      player.play();
     } catch (error) {
       console.error("Failed to play sound", error);
     }
