@@ -13,7 +13,7 @@ jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
   useRouter: () => ({ back: jest.fn() }), // Мокаем useRouter
 }));
-jest.mock('expo-av');
+jest.mock('expo-audio');
 jest.mock('expo-haptics');
 jest.mock('react-native-toast-message');
 

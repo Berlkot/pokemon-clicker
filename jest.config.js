@@ -5,6 +5,6 @@ module.exports = {
   ],
   setupFiles: ["./jest-setup.js"],
 moduleNameMapper: {
-    '^expo-av$': '<rootDir>/__mocks__/expo-av.js',
+    '^expo-audio$': '<rootDir>/__mocks__/expo-audio.js',
   },
 };
