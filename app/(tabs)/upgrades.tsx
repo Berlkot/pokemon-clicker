@@ -1,27 +1,27 @@
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, Pressable, Platform } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Toast from 'react-native-toast-message';
+import Colors from '../../constants/Colors';
 import { useGame } from '../../context/GameContext';
-import { upgradesDatabase, Upgrade } from '../../data/upgradesData';
-import Colors from '../../constants/Colors'; // <-- Импортируем цвета
-import FontAwesome from '@expo/vector-icons/FontAwesome'; // <-- Для иконок
-import Toast from 'react-native-toast-message'; // <-- Для уведомлений (из Части 2)
+import { Upgrade, upgradesDatabase } from '../../data/upgradesData';
 import { formatNumber } from '../../utils/formatNumber';
 
 
 export const recalculateStats = (upgrades: { [key: string]: number }) => {
-  let newEnergyPerClick = 1; // Базовое значение
-  let newEnergyPerSecond = 0; // Базовое значение
+  let newEnergyPerClick = 1; 
+  let newEnergyPerSecond = 0; 
 
-  // Сначала считаем общую силу клика
+  
   const clickUpgradeLevel = upgrades['stronger_click'] || 0;
   newEnergyPerClick += clickUpgradeLevel * upgradesDatabase['stronger_click'].effect.value;
 
-  // Затем, на основе силы клика, считаем пассивный доход
+  
   const passiveUpgradeLevel = upgrades['pikachu_helper'] || 0;
   
   if (passiveUpgradeLevel > 0) {
     const passiveEffect = upgradesDatabase['pikachu_helper'].effect;
-    // Пассивный доход = (уровень * процент) * текущая_сила_клика
+    
     newEnergyPerSecond += passiveUpgradeLevel * passiveEffect.value * newEnergyPerClick
   }
   
@@ -29,14 +29,14 @@ export const recalculateStats = (upgrades: { [key: string]: number }) => {
 };
 
 
-// Компонент для одного улучшения
+
 const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
   const { gameState, setGameState } = useGame();
 
   if (!gameState) return null;
 
   const currentLevel = gameState.upgrades[upgrade.id] || 0;
-  // Динамическая стоимость: увеличивается с каждым уровнем (например, на 15%)
+  
   const cost = Math.floor(upgrade.baseCost * Math.pow(1.15, currentLevel));
   const canAfford = gameState.evolutionEnergy >= cost;
 
@@ -51,14 +51,14 @@ const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
 
       const newState = { ...prevState };
       
-      // 1. Списываем энергию и повышаем уровень улучшения
+      
       newState.evolutionEnergy -= cost;
       newState.upgrades[upgrade.id] = (newState.upgrades[upgrade.id] || 0) + 1;
 
-      // 2. Вызываем нашу новую функцию для пересчета ВСЕХ статов
+      
       const { newEnergyPerClick, newEnergyPerSecond } = recalculateStats(newState.upgrades);
       
-      // 3. Обновляем статы в состоянии
+      
       newState.energyPerClick = newEnergyPerClick;
       newState.energyPerSecond = newEnergyPerSecond;
 
@@ -79,16 +79,16 @@ const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
         <Text style={styles.upgradeDescription}>{upgrade.description}</Text>
       </View>
       <Pressable 
-        // Применяем ripple-эффект. Он будет работать только на Android.
+        
         android_ripple={{
-          color: Colors.primary, // Цвет волны
-          borderless: true, // Волна может выходить за границы кнопки
+          color: Colors.primary, 
+          borderless: true, 
         }}
-        // Для iOS и других платформ можно оставить простой эффект изменения прозрачности
+        
         style={({ pressed }) => [
           styles.buyButton,
           !canAfford && styles.disabledButton,
-          pressed && Platform.OS !== 'android' && { opacity: 0.8 }, // Эффект для iOS
+          pressed && Platform.OS !== 'android' && { opacity: 0.8 }, 
         ]}
         onPress={handlePurchase}
         disabled={!canAfford}>
@@ -109,7 +109,6 @@ export default function UpgradesScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.headerContainer}>
         <Text style={styles.header}>Магазин улучшений</Text>
-        <Text style={styles.energyText}>Ваша энергия: {formatNumber(gameState.evolutionEnergy)}</Text>
       </View>
       
       {/* Динамически рендерим все улучшения из нашей базы данных */}
@@ -133,7 +132,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 12,
     marginBottom: 12,
-    // Тень для эффекта "карточки"
+    
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
