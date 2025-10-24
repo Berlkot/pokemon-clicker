@@ -1,20 +1,20 @@
-// app/_layout.tsx
 
+
+import { GameProvider } from '@/context/GameContext';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import Colors from '../constants/Colors';
-import { View, Text } from 'react-native'; // <-- ДОБАВЛЕНО: Импорт View и Text
-import { GameProvider } from '@/context/GameContext';
 
 export { ErrorBoundary } from 'expo-router';
 export const unstable_settings = { initialRouteName: '(tabs)' };
 SplashScreen.preventAutoHideAsync();
 
-// --- КОНФИГУРАЦИЯ ДЛЯ TOAST (ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ) ---
+
 const toastConfig = {
   gameToast: ({ text1, text2 }: any) => (
     <View style={{
@@ -66,7 +66,7 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   return (
-    // Оборачиваем ВСЕ приложение в GameProvider
+    
     <GameProvider>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

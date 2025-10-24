@@ -48,6 +48,14 @@ describe('Pokemon Evolution Functional Test with Complex Formula', () => {
       currentPokemonExp: requiredExp - 1,
       upgrades: {},
       lastSavedTime: Date.now(),
+      settings: {
+        isSoundEnabled: false,
+        isVibrationEnabled: false,
+      },
+      activeBuffs: [], 
+      nextMinigameTime: 0,
+      pausedCooldownTime: 0,
+      activeMinigameId: null,
     };
 
     let gameState = initialStateForEspeon;
@@ -56,7 +64,7 @@ describe('Pokemon Evolution Functional Test with Complex Formula', () => {
     });
 
     const { getByText, getByTestId, unmount } = render(
-      <GameContext.Provider value={{ gameState, setGameState, resetGame: jest.fn() }}>
+      <GameContext.Provider value={{ gameState, setGameState, resetGame: jest.fn(), updateSettings: jest.fn() }}>
         <GameScreen />
       </GameContext.Provider>
     );
@@ -91,6 +99,14 @@ describe('Pokemon Evolution Functional Test with Complex Formula', () => {
       currentPokemonExp: requiredExp2 - 1,
       lastSavedTime: Date.now(),
       upgrades: {},
+      settings: {
+        isSoundEnabled: false,
+        isVibrationEnabled: false,
+      },
+      activeBuffs: [], 
+      nextMinigameTime: 0,
+      pausedCooldownTime: 0,
+      activeMinigameId: null,
     };
 
     let gameState2 = initialStateForUmbreon;
@@ -99,7 +115,7 @@ describe('Pokemon Evolution Functional Test with Complex Formula', () => {
     });
 
     const { getByText: getByText2, getByTestId: getByTestId2 } = render(
-      <GameContext.Provider value={{ gameState: gameState2, setGameState: setGameState2, resetGame: jest.fn() }}>
+      <GameContext.Provider value={{ gameState: gameState2, setGameState: setGameState2, resetGame: jest.fn(), updateSettings: jest.fn() }}>
         <GameScreen />
       </GameContext.Provider>
     );

@@ -1,14 +1,18 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Toast from 'react-native-toast-message';
 import { formatNumber } from '@/utils/formatNumber';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import Toast from 'react-native-toast-message';
 
-// Определяем, как будет выглядеть состояние наших улучшений (ID апгрейда и его уровень).
+
 interface UpgradesState {
-  [upgradeId: string]: number; // e.g. { 'stronger_click': 2, 'pikachu_helper': 1 }
+  [upgradeId: string]: number; 
+}
+interface GameSettings {
+  isSoundEnabled: boolean;
+  isVibrationEnabled: boolean;
 }
 
-// Наш основной интерфейс состояния игры.
+
 interface GameState {
   lastSavedTime: number;
   evolutionEnergy: number;
@@ -18,6 +22,11 @@ interface GameState {
   currentPokemonLevel: number;
   currentPokemonExp: number;
   upgrades: UpgradesState;
+  settings: GameSettings;
+  activeBuffs: ActiveBuff[];
+  activeMinigameId: string | null;
+  nextMinigameTime: number;
+  pausedCooldownTime: number; 
 }
 
 const INITIAL_GAME_STATE: GameState = {
@@ -29,38 +38,58 @@ const INITIAL_GAME_STATE: GameState = {
   currentPokemonLevel: 1,
   currentPokemonExp: 0,
   upgrades: {},
+  settings: {
+    isSoundEnabled: true,
+    isVibrationEnabled: true,
+  },
+  activeBuffs: [],
+  activeMinigameId: null,
+  nextMinigameTime: 0, 
+  pausedCooldownTime: 0,
 };
 
-// --- ОБНОВИМ ИНТЕРФЕЙС КОНТЕКСТА ---
+export interface ActiveBuff {
+  id: number; 
+  type: 'xp_multiplier' | 'crit_chance_boost';
+  multiplier: number;
+  expiresAt: number;
+  startTime: number;
+}
+
+
 export interface IGameContext {
   gameState: GameState | null;
   setGameState: React.Dispatch<React.SetStateAction<GameState | null>>;
-  resetGame: () => Promise<void>; // <-- Добавляем новую функцию
+  resetGame: () => Promise<void>;
+  updateSettings: (newSettings: Partial<GameSettings>) => void;
 }
 
 export const GameContext = createContext<IGameContext | undefined>(undefined);
 const GAME_DATA_KEY = '@PokemonEvolution:gameData';
 
 
-// Создаем "Провайдер" - компонент, который будет хранить состояние и "раздавать" его дочерним элементам.
+
 export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   const [gameState, setGameState] = useState<GameState | null>(null);
 
-  // Вся логика загрузки, сохранения и пассивного дохода теперь живет здесь, в одном месте!
+  
   useEffect(() => {
     const loadGameData = async () => {
       try {
         const savedDataJson = await AsyncStorage.getItem(GAME_DATA_KEY);
         if (savedDataJson !== null) {
           let savedData: GameState = JSON.parse(savedDataJson);
+          Object.keys(INITIAL_GAME_STATE).forEach(key => {
+            if (!Object.hasOwn(savedData, key)) {
+              savedData[key] = INITIAL_GAME_STATE[key]; 
+            }
+          });
 
-          // --- ИСПРАВЛЕНИЕ ОФФЛАЙН-ПРОГРЕССА ---
           const timeOfflineInSeconds = (Date.now() - savedData.lastSavedTime) / 1000;
           const offlineEarnings = timeOfflineInSeconds * savedData.energyPerSecond;
 
-          if (offlineEarnings > 1) { // Начисляем, только если заработано что-то значимое
+          if (offlineEarnings > 1) {
             savedData.evolutionEnergy += offlineEarnings;
-            // Показываем уведомление о заработке
             Toast.show({
               type: 'gameToast',
               text1: 'С возвращением!',
@@ -87,6 +116,24 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   }, [gameState]);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      setGameState(prevState => {
+        if (!prevState || prevState.activeBuffs.length === 0) return prevState;
+
+        const now = Date.now();
+        const activeBuffs = prevState.activeBuffs.filter(buff => buff.expiresAt > now);
+
+        if (activeBuffs.length !== prevState.activeBuffs.length) {
+          return { ...prevState, activeBuffs };
+        }
+        return prevState;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
     if (!gameState || gameState.energyPerSecond === 0) return;
     const interval = setInterval(() => {
       setGameState(prevState => {
@@ -105,17 +152,29 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Ошибка при сбросе прогресса:', error);
     }
   };
+    const updateSettings = (newSettings: Partial<GameSettings>) => {
+    setGameState(prevState => {
+      if (!prevState) return null;
+      return {
+        ...prevState,
+        settings: {
+          ...prevState.settings,
+          ...newSettings,
+        },
+      };
+    });
+  };
 
 
   return (
-    <GameContext.Provider value={{ gameState, setGameState, resetGame }}>
+    <GameContext.Provider value={{ gameState, setGameState, resetGame, updateSettings }}>
       {children}
     </GameContext.Provider>
   );
 };
 
-// Создаем кастомный хук для удобного доступа к контексту.
-// Он будет проверять, что мы используем его внутри GameProvider.
+
+
 export const useGame = () => {
   const context = useContext(GameContext);
   if (context === undefined) {

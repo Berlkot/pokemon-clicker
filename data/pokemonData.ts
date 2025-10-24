@@ -1,15 +1,16 @@
-// Определяем интерфейс для статических данных каждого покемона.
+
 export interface PokemonData {
-  id: string; // Уникальный идентификатор, например 'bulbasaur'
-  name: string; // Отображаемое имя
-  image: any; // Здесь мы храним require(), т.к. этот файл не будет сериализоваться
-  evolvesTo?: string; // ID покемона, в которого он эволюционирует
-  evolutionLevel?: number; // Уровень, на котором происходит эволюция
+  id: string; 
+  name: string; 
+  image: any; 
+  evolvesTo?: string; 
+  evolutionLevel?: number; 
   evolutionStage: number;
+  cry?: any;
 }
 
-// Наш "словарь" или "справочник" покемонов.
-// Ключ объекта - это ID покемона для быстрого доступа.
+
+
 export const pokemonDatabase: Record<string, PokemonData> = {
   'eevee': {
     id: 'eevee',
@@ -26,6 +27,7 @@ export const pokemonDatabase: Record<string, PokemonData> = {
     evolvesTo: 'umbreon',
     evolutionLevel: 10,
     evolutionStage: 2,
+    cry: require('../assets/sounds/cries/espeon.mp3'),
   },
   'umbreon': {
     id: 'umbreon',
@@ -34,6 +36,7 @@ export const pokemonDatabase: Record<string, PokemonData> = {
     image: require('../assets/images/eevee3.png'),
     evolutionLevel: 18,
     evolutionStage: 3,
+    cry: require('../assets/sounds/cries/umbreon.mp3'),
   },
   'sylveon': {
     id: 'sylveon',
@@ -41,5 +44,6 @@ export const pokemonDatabase: Record<string, PokemonData> = {
     image: require('../assets/images/eevee4.png'),
     evolutionLevel: 25,
     evolutionStage: 4,
+    cry: require('../assets/sounds/cries/sylveon.mp3'),
   }
 };

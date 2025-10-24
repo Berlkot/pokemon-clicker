@@ -1,55 +1,79 @@
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet, Text, View, Pressable, Alert } from 'react-native';
-import { useGame } from '../context/GameContext'; // <-- Импортируем хук
-import { useRouter } from 'expo-router'; // <-- Для закрытия модального окна
-import Toast from 'react-native-toast-message'; // <-- Для уведомления
+import { Alert, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 import Colors from '../constants/Colors';
+import { useGame } from '../context/GameContext';
+
+
+const SettingRow = ({ label, value, onValueChange }: { label: string, value: boolean, onValueChange: (value: boolean) => void }) => (
+  <View style={styles.settingRow}>
+    <Text style={styles.settingLabel}>{label}</Text>
+    <Switch
+      trackColor={{ false: "#767577", true: Colors.success }}
+      thumbColor={value ? "#e4ffcbff" : "#f4f3f4"}
+      onValueChange={onValueChange}
+      value={value}
+    />
+  </View>
+);
 
 export default function ModalScreen() {
-  const { resetGame } = useGame(); // <-- Получаем нашу функцию
-  const router = useRouter(); // <-- Получаем роутер
+  const { gameState, updateSettings, resetGame } = useGame();
+  const router = useRouter();
 
   const handleResetPress = () => {
-    // Показываем диалоговое окно для подтверждения
+    
     Alert.alert(
-      "Сброс прогресса", // Заголовок
-      "Вы уверены, что хотите сбросить весь прогресс? Это действие нельзя будет отменить.", // Сообщение
+      "Сброс прогресса", 
+      "Вы уверены, что хотите сбросить весь прогресс? Это действие нельзя будет отменить.", 
       [
-        // Кнопки
+        
         {
           text: "Отмена",
-          style: "cancel", // На iOS эта кнопка будет выглядеть стандартно для отмены
+          style: "cancel", 
         },
         {
           text: "Сбросить",
           onPress: async () => {
-            await resetGame(); // Вызываем сброс
-            router.back(); // Закрываем модальное окно
-            Toast.show({ // Показываем уведомление
+            await resetGame(); 
+            router.back(); 
+            Toast.show({ 
               type: 'gameToast',
               text1: 'Прогресс сброшен!',
               text2: 'Вы можете начать игру заново.',
             });
           },
-          style: "destructive", // На iOS эта кнопка будет красного цвета
+          style: "destructive", 
         },
       ]
     );
   };
+  if (!gameState) {
+    return <View style={styles.container}><Text>Загрузка...</Text></View>;
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Об игре</Text>
-      <View style={styles.separator} />
-      <Text style={styles.text}>
-        Это кликер Эволюция Покемонов. Нажимайте на покемона, чтобы копить Энергию Эволюции, и помогайте ему развиваться!
-      </Text>
-
-      {/* --- НАША НОВАЯ КНОПКА --- */}
+      <Text style={styles.title}>Настройки</Text>
+      
+      <View style={styles.settingsGroup}>
+        <SettingRow 
+          label="Звуковые эффекты"
+          value={gameState.settings.isSoundEnabled}
+          onValueChange={(value) => updateSettings({ isSoundEnabled: value })}
+        />
+        <SettingRow 
+          label="Вибрация"
+          value={gameState.settings.isVibrationEnabled}
+          onValueChange={(value) => updateSettings({ isVibrationEnabled: value })}
+        />
+      </View>
+      
       <Pressable style={styles.resetButton} onPress={handleResetPress} testID="reset-progress-button">
         <Text style={styles.resetButtonText}>Сбросить прогресс</Text>
       </Pressable>
-
+      
       <StatusBar style={Platform.OS === 'ios' ? 'light' : 'auto'} />
     </View>
   );
@@ -69,12 +93,28 @@ const styles = StyleSheet.create({
     marginTop: 50,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: Colors.danger, // Используем наш красный цвет
+    backgroundColor: Colors.danger, 
     borderRadius: 8,
   },
   resetButtonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  settingsGroup: {
+    width: '90%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 10,
+    marginVertical: 30,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  settingLabel: {
+    fontSize: 18,
   },
 });

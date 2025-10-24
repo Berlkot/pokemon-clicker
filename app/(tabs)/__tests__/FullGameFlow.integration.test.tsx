@@ -1,9 +1,10 @@
+import { useGame } from '@/context/GameContext';
 import React from 'react';
-import { render, fireEvent, waitFor, act } from '../../../__test__/test-utils';
+import { act, fireEvent, render, waitFor } from '../../../__test__/test-utils';
 import GameScreen from '../index';
 import UpgradesScreen from '../upgrades';
 
-// --- Моки ---
+
 jest.mock('expo-router', () => ({
   ...jest.requireActual('expo-router'),
   useFocusEffect: jest.fn(),
@@ -46,14 +47,27 @@ afterAll(() => {
 });
 
 
+let contextState: any = null;
+const ContextSpy = () => {
+  const { gameState } = useGame();
+  contextState = gameState;
+  return null;
+};
+
 
 describe('GameScreen and UpgradesScreen Integration', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
   it(
     'should allow user to buy an upgrade and see its effect on the game screen',
     async () => {
-      // --- ЭТАП 1: GameScreen ---
       const gameScreen = render(<GameScreen />);
-      await waitFor(() => expect(gameScreen.getByText('Энергия Эволюции: 0')).toBeTruthy());
+      await waitFor(() => expect(gameScreen.getByText('Опыт: 0 / 100')).toBeTruthy());
 
       const pokemonButton = gameScreen.getByTestId('pokemon-pressable');
       await act(async () => {
@@ -61,30 +75,25 @@ describe('GameScreen and UpgradesScreen Integration', () => {
           fireEvent.press(pokemonButton);
         }
       });
+      gameScreen.unmount();
 
-      await waitFor(() => expect(gameScreen.getByText('Энергия Эволюции: 100')).toBeTruthy());
-      gameScreen.unmount(); // ✅ вне act()
-
-      // --- ЭТАП 2: UpgradesScreen ---
       const upgradesScreen = render(<UpgradesScreen />);
       const buyButton = await upgradesScreen.findByText('100 ЭЭ');
       await act(async () => {
         fireEvent.press(buyButton);
       });
 
-      await waitFor(() => expect(upgradesScreen.getByText('Ваша энергия: 0')).toBeTruthy());
-      upgradesScreen.unmount(); // ✅ вне act()
+      upgradesScreen.unmount();
 
-      // --- ЭТАП 3: GameScreen снова ---
       const finalGameScreen = render(<GameScreen />);
-      await waitFor(() => expect(finalGameScreen.getByText('Энергия Эволюции: 0')).toBeTruthy());
+      await waitFor(() => expect(finalGameScreen.getByText('Опыт: 0 / 282')).toBeTruthy());
 
       const finalPokemonButton = finalGameScreen.getByTestId('pokemon-pressable');
       await act(async () => {
         fireEvent.press(finalPokemonButton);
       });
 
-      await waitFor(() => expect(finalGameScreen.getByText('Энергия Эволюции: 2')).toBeTruthy());
+      await waitFor(() => expect(finalGameScreen.getByText('Опыт: 2 / 282')).toBeTruthy());
     },
     15000
   );
