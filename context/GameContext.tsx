@@ -87,6 +87,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
           const timeOfflineInSeconds = (Date.now() - savedData.lastSavedTime) / 1000;
           const offlineEarnings = timeOfflineInSeconds * savedData.energyPerSecond;
+          // savedData.evolutionEnergy = 1000000000
+          savedData.activeMinigameId = null
 
           if (offlineEarnings > 1) {
             savedData.evolutionEnergy += offlineEarnings;

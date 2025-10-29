@@ -21,6 +21,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import MaskedView from "@react-native-masked-view/masked-view";
 import Svg, { Circle } from "react-native-svg";
 import MinigameOverlay from "../../components/MinigameOverlay";
 import Colors from "../../constants/Colors";
@@ -35,19 +36,17 @@ type FloatingNumber = {
   animation: Animated.Value;
   startX: number;
   startY: number;
-  isCrit: boolean; 
-  isBuffed: boolean; 
+  isCrit: boolean;
+  isBuffed: boolean;
 };
 
-const MINIGAME_CHANCE = 0.04;
+const HOLD_DURATION_MS = 1500;
 const MINIGAME_COOLDOWN_MS = 60000;
-const CRIT_CHANCE = 0.1; 
-const CRIT_MULTIPLIER = 5; 
-
+const CRIT_CHANCE = 0.1;
+const CRIT_MULTIPLIER = 5;
 
 const POKEMON_SIZE = 250;
-const SQUEEZE_SCALE_Y = 0.8; 
-
+const SQUEEZE_SCALE_Y = 0.8;
 
 const SQUEEZE_TRANSLATE_Y = ((1 - SQUEEZE_SCALE_Y) / 2) * POKEMON_SIZE;
 const defaultPokemonData = pokemonDatabase["eevee"];
@@ -55,8 +54,8 @@ const defaultPokemonData = pokemonDatabase["eevee"];
 type PikachuSprite = {
   id: number;
   animation: Animated.Value;
-  x: number; 
-  y: number; 
+  x: number;
+  y: number;
 };
 
 const PikachuSpriteComponent = memo(function PikachuSpriteComponent({
@@ -86,13 +85,12 @@ const PikachuSpriteComponent = memo(function PikachuSpriteComponent({
 
 export default function GameScreen() {
   const { gameState, setGameState } = useGame();
-  const { width, height } = useWindowDimensions(); 
+  const { width, height } = useWindowDimensions();
 
   const [floatingNumbers, setFloatingNumbers] = useState<FloatingNumber[]>([]);
-  
+
   const [pikachuSprites, setPikachuSprites] = useState<PikachuSprite[]>([]);
 
-  
   const scaleAnimation = useRef(new Animated.Value(1)).current;
   const translateAnimation = useRef(new Animated.Value(0)).current;
   const player = useAudioPlayer(require("../../assets/sounds/click.mp3"));
@@ -101,7 +99,8 @@ export default function GameScreen() {
   const previousBgColor = useRef(Colors.stageColors[0]);
   const previousAccentColor = useRef(Colors.stageAccentColors[0]);
   const [minigameCooldownProgress, setMinigameCooldownProgress] = useState(0);
-
+  const shimmerAnimation = useRef(new Animated.Value(0)).current;
+  const holdAnimation = useRef(new Animated.Value(0)).current;
   const [isMinigameVisible, setIsMinigameVisible] = useState(false);
   const transitionPokemonScale = useRef(new Animated.Value(1)).current;
   const transitionPokemonOpacity = useRef(new Animated.Value(0)).current;
@@ -110,11 +109,15 @@ export default function GameScreen() {
     [key: number]: number;
   }>({});
 
+  const previousPokemonId = useRef(gameState?.currentPokemonId);
   const levelUpAnimation = useRef(new Animated.Value(0)).current;
+  const [maskImageSource, setMaskImageSource] = useState(
+    pokemonDatabase[gameState?.currentPokemonId || 'eevee'].image
+  );
 
   const triggerLevelUpAnimation = () => {
     requestAnimationFrame(() => {
-      levelUpAnimation.setValue(0); 
+      levelUpAnimation.setValue(0);
       Animated.sequence([
         Animated.timing(levelUpAnimation, {
           toValue: 1,
@@ -132,9 +135,7 @@ export default function GameScreen() {
   };
 
   const triggerClickAnimation = () => {
-    
     Animated.sequence([
-      
       Animated.parallel([
         Animated.timing(scaleAnimation, {
           toValue: SQUEEZE_SCALE_Y,
@@ -147,7 +148,7 @@ export default function GameScreen() {
           useNativeDriver: true,
         }),
       ]),
-      
+
       Animated.parallel([
         Animated.spring(scaleAnimation, {
           toValue: 1,
@@ -164,108 +165,78 @@ export default function GameScreen() {
   };
 
   useEffect(() => {
-    
+    // Вход в мини-игру
     if (gameState?.activeMinigameId && !isMinigameVisible) {
-      const now = Date.now();
-      
-      const remainingTime = Math.max(0, gameState.nextMinigameTime - now);
-
-      
-      setGameState(prevState => {
-        if (!prevState) return null;
-        return {
-          ...prevState,
-          pausedCooldownTime: remainingTime,
-        };
-      });
-
-      
       Animated.sequence([
-        
         Animated.parallel([
-          Animated.timing(transitionPokemonScale, {
-            toValue: 3,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(transitionPokemonOpacity, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
+          Animated.timing(transitionPokemonScale, { toValue: 3, duration: 400, useNativeDriver: true }),
+          Animated.timing(transitionPokemonOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
         ]),
-        
-        Animated.timing(transitionWipe, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
+        Animated.timing(transitionWipe, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]).start(() => {
-        
-        
+        // 1. Показываем оверлей игры
         setIsMinigameVisible(true);
-
-        
-        
-        
-        
-        transitionWipe.setValue(0);
+        // 2. ВСЁ! НЕ сбрасываем значение шторки.
+        // Она остается внизу (со значением 1) за оверлеем.
       });
-    }
-    
+    } 
+    // Выход из мини-игры (этот блок теперь будет работать правильно)
     else if (!gameState?.activeMinigameId && isMinigameVisible) {
-      
-      setGameState(prevState => {
-        if (!prevState) return null;
-        
-        const newNextMinigameTime = Date.now() + prevState.pausedCooldownTime;
-        return {
-          ...prevState,
-          nextMinigameTime: newNextMinigameTime,
-          pausedCooldownTime: 0, 
-        };
-      });
-      
-      setIsMinigameVisible(false);
-
-      
+      // Прячем оверлей игры, чтобы стала видна шторка
+      setIsMinigameVisible(false); 
+      // Анимируем шторку вверх (от ее текущего значения 1 к 0)
       Animated.timing(transitionWipe, {
-        toValue: 0,
-        duration: 300,
+        toValue: 0, 
+        duration: 200,
         useNativeDriver: true,
+        // Добавим небольшую задержку, чтобы избежать мерцания
+        delay: 10 
       }).start(() => {
-        
+        // Сбрасываем остальные анимации
         transitionPokemonScale.setValue(1);
         transitionPokemonOpacity.setValue(0);
       });
     }
-  }, [gameState?.activeMinigameId, gameState?.nextMinigameTime, isMinigameVisible, setGameState, transitionPokemonOpacity, transitionPokemonScale, transitionWipe]);
+  }, [
+    gameState?.activeMinigameId,
+    isMinigameVisible,
+    transitionPokemonOpacity,
+    transitionPokemonScale,
+    transitionWipe,
+  ]);
 
-  
   useEffect(() => {
     if (!gameState) return;
 
-    
-    const pokemonData = pokemonDatabase[gameState.currentPokemonId];
-    if (!pokemonData) return; 
+    const currentId = gameState.currentPokemonId;
 
-    const newBgColor = Colors.stageColors[pokemonData.evolutionStage - 1];
-    const newAccentColor =
-      Colors.stageAccentColors[pokemonData.evolutionStage - 1];
+    // --- ИЗМЕНЕНИЕ 2: Новая, более надежная проверка ---
+    // Запускаем анимацию только если ID покемона действительно изменился
+    if (currentId !== previousPokemonId.current) {
+      
+      const pokemonData = pokemonDatabase[currentId];
+      const newBgColor = Colors.stageColors[pokemonData.evolutionStage - 1];
+      const newAccentColor = Colors.stageAccentColors[pokemonData.evolutionStage - 1];
 
-    if (newBgColor === previousBgColor.current) return;
+      colorAnimationDriver.setValue(0);
+      Animated.timing(colorAnimationDriver, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: false,
+      }).start(() => {
+        // После завершения анимации:
+        // 1. Обновляем маску на изображение нового покемона
+        setMaskImageSource(pokemonData.image);
+        // 2. Обновляем ref, чтобы он "запомнил" нового покемона для следующей проверки
+        previousPokemonId.current = currentId;
+      });
 
-    colorAnimationDriver.setValue(0);
-    Animated.timing(colorAnimationDriver, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: false,
-    }).start();
-
-    previousBgColor.current = newBgColor;
-    previousAccentColor.current = newAccentColor;
-  }, [colorAnimationDriver, gameState, gameState?.currentPokemonId]);
-
+      // Обновляем предыдущие цвета для интерполяции
+      previousBgColor.current = newBgColor;
+      previousAccentColor.current = newAccentColor;
+    }
+  }, [colorAnimationDriver, gameState, gameState?.currentPokemonId]); 
+  
   const createFloatingNumber = useCallback(
     (value: number, isCrit: boolean = false, isBuffed: boolean = false) => {
       const spawnArea = 150;
@@ -276,8 +247,8 @@ export default function GameScreen() {
         animation: new Animated.Value(0),
         startX: Math.random() * spawnArea + 50,
         startY: Math.random() * spawnArea,
-        isCrit, 
-        isBuffed, 
+        isCrit,
+        isBuffed,
       };
 
       setFloatingNumbers((current) => {
@@ -300,22 +271,17 @@ export default function GameScreen() {
     []
   );
   useEffect(() => {
-    
     if (gameState?.activeMinigameId && gameState.settings.isSoundEnabled) {
       const pokemonData = pokemonDatabase[gameState.activeMinigameId];
       if (pokemonData && pokemonData.cry) {
-        
         const player = createAudioPlayer(pokemonData.cry);
         player.play();
-        cryPlayer.current = player; 
+        cryPlayer.current = player;
       }
     }
 
-    
-    
     return () => {
       if (cryPlayer.current) {
-        
         cryPlayer.current.remove();
         cryPlayer.current = null;
       }
@@ -325,27 +291,23 @@ export default function GameScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        
         Alert.alert("Выход из игры", "Вы уверены, что хотите выйти?", [
           { text: "Остаться", style: "cancel", onPress: () => null },
           {
             text: "Выйти",
             style: "destructive",
             onPress: () => BackHandler.exitApp(),
-          }, 
+          },
         ]);
-        
+
         return true;
       };
 
-      
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
         onBackPress
       );
 
-      
-      
       return () => subscription.remove();
     }, [])
   );
@@ -368,7 +330,7 @@ export default function GameScreen() {
       }, 1000);
 
       return () => clearInterval(interval);
-    }, [gameState, setGameState]) 
+    }, [gameState, setGameState])
   );
   useEffect(() => {
     const timerInterval = setInterval(() => {
@@ -376,23 +338,20 @@ export default function GameScreen() {
 
       const now = Date.now();
 
-      
-      
       if (gameState.activeMinigameId) {
-        const progress = 1 - (gameState.pausedCooldownTime / MINIGAME_COOLDOWN_MS);
+        const progress =
+          1 - gameState.pausedCooldownTime / MINIGAME_COOLDOWN_MS;
         setMinigameCooldownProgress(progress);
-      } else { 
+      } else {
         if (gameState.nextMinigameTime > now) {
           const timeLeft = gameState.nextMinigameTime - now;
-          const progress = 1 - (timeLeft / MINIGAME_COOLDOWN_MS);
+          const progress = 1 - timeLeft / MINIGAME_COOLDOWN_MS;
           setMinigameCooldownProgress(progress);
         } else {
           setMinigameCooldownProgress(1);
         }
       }
 
-
-      
       if (gameState.activeBuffs.length > 0) {
         const CIRCLE_RADIUS = 18;
         const CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
@@ -411,50 +370,44 @@ export default function GameScreen() {
       } else if (Object.keys(buffTimerOffsets).length > 0) {
         setBuffTimerOffsets({});
       }
-    }, 100); 
+    }, 100);
 
-    return () => clearInterval(timerInterval); 
+    return () => clearInterval(timerInterval);
   }, [buffTimerOffsets, gameState]);
 
   useEffect(() => {
     if (!gameState) return;
 
-    
     const pikachuLevel = gameState.upgrades["pikachu_helper"] || 0;
 
-    
     if (pikachuLevel === pikachuSprites.length) return;
 
-    
     if (pikachuLevel < pikachuSprites.length) {
-      setPikachuSprites([]); 
+      setPikachuSprites([]);
       return;
     }
 
-    
     const newSprites: PikachuSprite[] = [];
     for (let i = pikachuSprites.length; i < pikachuLevel; i++) {
       const newSprite: PikachuSprite = {
         id: Date.now() + i,
         animation: new Animated.Value(0),
-        
+
         x: Math.random() * (width - 50),
-        y: Math.random() * (height - 150) + 50, 
+        y: Math.random() * (height - 150) + 50,
       };
       newSprites.push(newSprite);
     }
 
-    
     const updatedSprites = [...pikachuSprites, ...newSprites];
     setPikachuSprites(updatedSprites);
 
-    
     newSprites.forEach((sprite) => {
       Animated.loop(
         Animated.sequence([
           Animated.timing(sprite.animation, {
             toValue: 1,
-            duration: 1500 + Math.random() * 500, 
+            duration: 1500 + Math.random() * 500,
             useNativeDriver: true,
           }),
           Animated.timing(sprite.animation, {
@@ -463,7 +416,7 @@ export default function GameScreen() {
             useNativeDriver: true,
           }),
         ]),
-        
+
         { delay: Math.random() * 1000 }
       ).start();
     });
@@ -488,7 +441,6 @@ export default function GameScreen() {
     let totalMultiplier = 1;
     const hasActiveBuffs = gameState.activeBuffs.length > 0;
 
-    
     if (hasActiveBuffs) {
       totalMultiplier = gameState.activeBuffs.reduce(
         (acc, buff) => acc * buff.multiplier,
@@ -501,8 +453,6 @@ export default function GameScreen() {
       totalMultiplier *= CRIT_MULTIPLIER;
     }
 
-    
-    
     createFloatingNumber(
       Math.round(energyGained * totalMultiplier),
       isCrit,
@@ -518,7 +468,7 @@ export default function GameScreen() {
       if (!pokemonData) return prevState;
 
       const requiredExp = requiredExpForLevelUp;
-      
+
       const xpMultiplierFromBuffs = prevState.activeBuffs.reduce(
         (acc, buff) => {
           return buff.type === "xp_multiplier" ? acc * buff.multiplier : acc;
@@ -551,19 +501,59 @@ export default function GameScreen() {
         currentPokemonExp: newExp,
       };
     });
-    const now = Date.now();
-    if (now > gameState.nextMinigameTime && Math.random() < MINIGAME_CHANCE) {
-      if (minigameDatabase[gameState.currentPokemonId]) {
+  };
+
+  const handlePressIn = () => {
+    if (
+      !minigameDatabase[currentPokemonData.id] ||
+      minigameCooldownProgress < 1 ||
+      !gameState
+    )
+      return;
+
+    // Запускаем анимацию сжатия
+    Animated.timing(holdAnimation, {
+      toValue: 1,
+      duration: HOLD_DURATION_MS,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      // Этот коллбэк сработает, когда анимация завершится
+      // 'finished' будет true, только если анимация не была прервана
+      if (finished && gameState) {
+        // УСПЕХ! Запускаем мини-игру
         setGameState((prevState) => {
           if (!prevState) return null;
           return {
             ...prevState,
             activeMinigameId: prevState.currentPokemonId,
-            nextMinigameTime: now + MINIGAME_COOLDOWN_MS, 
+            nextMinigameTime: Date.now() + MINIGAME_COOLDOWN_MS,
           };
         });
       }
-    }
+    });
+  };
+
+  const shimmerOpacity = shimmerAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.4], // От полностью прозрачного до 40% непрозрачности
+  });
+
+  // Интерполяция для удержания (сжатие) остается без изменений
+  const holdScale = holdAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0.8],
+  });
+
+  const handlePressOut = () => {
+    // Если игрок отпустил палец, останавливаем текущую анимацию
+    holdAnimation.stopAnimation(() => {
+      // И плавно возвращаем покемона в нормальное состояние
+      Animated.timing(holdAnimation, {
+        toValue: 0,
+        duration: 300, // Быстрое восстановление
+        useNativeDriver: true,
+      }).start();
+    });
   };
 
   const handleMinigameComplete = (reward: MinigameReward | null) => {
@@ -573,17 +563,15 @@ export default function GameScreen() {
       let newXp = prevState.currentPokemonExp;
       let newBuffs = [...prevState.activeBuffs];
 
+      // Логика наград (без изменений)
       if (reward) {
         if (reward.type === "xp_boost") {
-          const requiredExp = Math.floor(
-            100 * Math.pow(prevState.currentPokemonLevel, 1.5)
-          );
+          const requiredExp = Math.floor(100 * Math.pow(prevState.currentPokemonLevel, 1.5));
           newXp += Math.floor(requiredExp * (reward.value / 100));
         }
-
         if (reward.type === "buff") {
           newBuffs.push({
-            id: Date.now(), 
+            id: Date.now(),
             type: reward.buffType,
             startTime: Date.now(),
             multiplier: reward.multiplier,
@@ -592,12 +580,15 @@ export default function GameScreen() {
         }
       }
 
-      
+      // Добавляем логику перезарядки прямо сюда!
+      const newNextMinigameTime = Date.now() + MINIGAME_COOLDOWN_MS;
+
       return {
         ...prevState,
         currentPokemonExp: newXp,
         activeBuffs: newBuffs,
-        activeMinigameId: null,
+        activeMinigameId: null, // Сбрасываем ID мини-игры
+        nextMinigameTime: newNextMinigameTime, // Устанавливаем новое время перезарядки
       };
     });
   };
@@ -617,6 +608,38 @@ export default function GameScreen() {
       }),
     [colorAnimationDriver, currentPokemonData.evolutionStage]
   );
+  useEffect(() => {
+    if (
+      minigameDatabase[currentPokemonData.id] &&
+      minigameCooldownProgress >= 1 &&
+      !gameState?.activeMinigameId
+    ) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnimation, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: false,
+          }),
+          Animated.timing(shimmerAnimation, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: false,
+          }),
+        ])
+      ).start();
+    } else {
+      shimmerAnimation.stopAnimation();
+      shimmerAnimation.setValue(0);
+    }
+
+    return () => shimmerAnimation.stopAnimation();
+  }, [
+    minigameCooldownProgress,
+    gameState?.activeMinigameId,
+    shimmerAnimation,
+    currentPokemonData.id,
+  ]);
 
   const animatedAccentColor = useMemo(
     () =>
@@ -636,7 +659,7 @@ export default function GameScreen() {
       </View>
     );
   }
-  
+
   const requiredExpForLevelUp = Math.floor(
     100 * Math.pow(gameState.currentPokemonLevel, 1.5)
   );
@@ -656,12 +679,12 @@ export default function GameScreen() {
 
   const wipeTranslateY = transitionWipe.interpolate({
     inputRange: [0, 1],
-    outputRange: [-height, 0], 
+    outputRange: [-height, 0],
   });
 
   const animatedPokemonOpacity = transitionPokemonOpacity.interpolate({
     inputRange: [0, 0.5, 1],
-    outputRange: [0, 1, 0], 
+    outputRange: [0, 1, 0],
   });
 
   return (
@@ -676,7 +699,6 @@ export default function GameScreen() {
             const CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
             return (
               <View key={buff.id} style={styles.buffIconContainer}>
-                {/* 1. --- ДОБАВЛЯЕМ ФОН ДЛЯ КОНТРАСТНОСТИ --- */}
                 <View style={styles.buffIconBackground} />
 
                 <Svg width="44" height="44" viewBox="0 0 44 44">
@@ -706,7 +728,6 @@ export default function GameScreen() {
           })}
         </View>
 
-        {/* Пустая View для баланса, если нужно */}
         <View style={{ flex: 1 }} />
       </View>
 
@@ -717,7 +738,7 @@ export default function GameScreen() {
       </View>
 
       <View />
-      <View style={styles.centerStage}>
+      <View style={styles.centerStage} pointerEvents={isMinigameVisible ? 'none' : 'auto'}>
         <View style={styles.pokemonContainer}>
           <Text style={styles.pokemonName}>
             {currentPokemonData.name} (Ур. {gameState.currentPokemonLevel})
@@ -735,17 +756,46 @@ export default function GameScreen() {
               transform: [
                 { scaleY: scaleAnimation },
                 { translateY: translateAnimation },
+                { scale: holdScale },
               ],
             }}
           >
-            <Pressable onPress={handlePokemonClick} testID="pokemon-pressable">
+            <Pressable
+              onPress={handlePokemonClick}
+              onPressIn={handlePressIn}
+              onPressOut={handlePressOut}
+              testID="pokemon-pressable"
+              style={styles.pressableContainer}
+              disabled={isMinigameVisible}
+            >
               <Image
                 source={currentPokemonData.image}
                 style={styles.pokemonImage}
               />
+
+              <MaskedView
+                style={StyleSheet.absoluteFill}
+                maskElement={
+                  <View style={styles.maskContainer}>
+                  <Image
+                    source={maskImageSource}
+                    style={styles.pokemonImage}
+                  />
+                  </View>
+                }
+                pointerEvents="none"
+              >
+                <Animated.View
+                  style={{
+                    flex: 1,
+                    backgroundColor: accentColor,
+                    opacity: shimmerOpacity,
+                  }}
+                  pointerEvents="none"
+                />
+              </MaskedView>
             </Pressable>
           </Animated.View>
-
           {minigameDatabase[currentPokemonData.id] && (
             <View style={styles.pokemonCooldownContainer}>
               <MaterialCommunityIcons
@@ -782,9 +832,9 @@ export default function GameScreen() {
                 <Animated.Text
                   key={id}
                   style={[
-                    styles.floatingNumber, 
-                    isCrit && styles.critFloatingNumber, 
-                    isBuffed && styles.buffFloatingNumber, 
+                    styles.floatingNumber,
+                    isCrit && styles.critFloatingNumber,
+                    isBuffed && styles.buffFloatingNumber,
                     {
                       left: startX,
                       top: startY,
@@ -813,11 +863,11 @@ export default function GameScreen() {
               transform: [{ scale: transitionPokemonScale }],
             },
           ]}
-          pointerEvents="none" 
+          pointerEvents="none"
         >
           <Image
             source={currentPokemonData.image}
-            style={styles.pokemonImage} 
+            style={styles.pokemonImage}
           />
         </Animated.View>
       </View>
@@ -843,7 +893,6 @@ export default function GameScreen() {
         </View>
       </View>
 
-      {/* Анимированная цветная шторка */}
       <Animated.View
         style={[
           styles.transitionWipe,
@@ -858,14 +907,13 @@ export default function GameScreen() {
       {/* Оверлей теперь показывается по локальному состоянию isMinigameVisible */}
       {isMinigameVisible && (
         <MinigameOverlay
-          pokemonId={gameState.activeMinigameId!} 
+          pokemonId={gameState.activeMinigameId!}
           onComplete={handleMinigameComplete}
         />
       )}
     </Animated.View>
   );
 }
-
 
 const styles = StyleSheet.create({
   transitionWipe: {
@@ -874,12 +922,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1001, 
+    zIndex: 9, 
   },
   container: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "space-between", 
+    justifyContent: "space-between",
     padding: 20,
   },
   topUiContainer: {
@@ -930,32 +978,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   spriteContainer: {
-    zIndex: -1, 
+    zIndex: -1,
   },
   pikachuSprite: {
     position: "absolute",
     width: 40,
     height: 40,
     resizeMode: "contain",
-    opacity: 0.7, 
+    opacity: 0.7,
   },
   pokemonName: {
     marginTop: 10,
     fontSize: 24,
     fontWeight: "bold",
-    color: Colors.darkGray, 
-    marginBottom: 10, 
+    color: Colors.darkGray,
+    marginBottom: 10,
   },
   pokemonCooldownContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 10, 
-    width: "80%", 
-  },
-  pokemonImage: {
-    width: POKEMON_SIZE,
-    height: POKEMON_SIZE,
-    resizeMode: "contain",
+    marginTop: 10,
+    width: "80%",
   },
   experienceContainer: {
     width: "100%",
@@ -1011,39 +1054,51 @@ const styles = StyleSheet.create({
   },
   floatingNumber: {
     position: "absolute",
-    fontSize: 22, 
+    fontSize: 22,
     fontWeight: "bold",
     textShadowColor: "black",
     textShadowRadius: 2,
     textShadowOffset: { width: 1, height: 1 },
   },
   critFloatingNumber: {
-    fontSize: 32, 
-    fontWeight: "900", 
+    fontSize: 32,
+    fontWeight: "900",
   },
-  
+
   buffFloatingNumber: {
-    fontSize: 26, 
+    fontSize: 26,
     fontWeight: "800",
   },
   centerStage: {
-    flex: 1, 
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    width: "100%", 
-  },
-
-  pokemonContainer: {
-    
-    width: POKEMON_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-    
+    width: "100%",
   },
 
   transitionPokemon: {
     position: "absolute",
     zIndex: 1000,
-    
+  },
+  pokemonContainer: {
+    width: POKEMON_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pressableContainer: {
+    width: POKEMON_SIZE,
+    height: POKEMON_SIZE,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pokemonImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
+  },
+  maskContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
