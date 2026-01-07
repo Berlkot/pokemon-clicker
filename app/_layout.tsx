@@ -7,6 +7,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Text, View } from 'react-native';
+import { SaveConflictGate } from '@/components/SaveConflictGate'
 import Toast from 'react-native-toast-message';
 import Colors from '../constants/Colors';
 
@@ -72,6 +73,7 @@ function RootLayoutNav() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Настройки' }} />
       </Stack>
+      <SaveConflictGate />
       <Toast config={toastConfig} position="top" topOffset={60} />
     </GameProvider>
   );
