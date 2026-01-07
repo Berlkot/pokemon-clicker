@@ -2,6 +2,9 @@ import { formatNumber } from '@/utils/formatNumber';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import Toast from 'react-native-toast-message';
+import { supabase } from '@/lib/supabase'
+import type { Session } from '@supabase/supabase-js'
+
 
 
 interface UpgradesState {
@@ -87,7 +90,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
           const timeOfflineInSeconds = (Date.now() - savedData.lastSavedTime) / 1000;
           const offlineEarnings = timeOfflineInSeconds * savedData.energyPerSecond;
-          // savedData.evolutionEnergy = 1000000000
+          savedData.evolutionEnergy = 1000000000
           savedData.activeMinigameId = null
 
           if (offlineEarnings > 1) {

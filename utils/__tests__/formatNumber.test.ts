@@ -14,7 +14,7 @@ describe('formatNumber', () => {
   it('should format thousands with a "K" suffix', () => {
     expect(formatNumber(1000)).toBe('1.00K');
     expect(formatNumber(12345)).toBe('12.35K');
-    expect(formatNumber(999999)).toBe('1.00M'); // Jest поможет найти ошибку - 999_999 должно быть 999.99K
+    expect(formatNumber(999999)).toBe('1.00M');
   });
 
   it('should format millions with an "M" suffix', () => {

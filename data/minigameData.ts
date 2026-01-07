@@ -15,8 +15,8 @@ export const minigameDatabase: Record<string, MinigameData> = {
   'umbreon': {
     id: 'umbreon',
     type: 'whack-a-mole',
-    name: 'Магия Эспеона',
-    instructions: 'Запомни и повтори последовательность свечения кристаллов!',
+    name: 'Глаза Умбреона',
+    instructions: 'Нажимай на появляющиеся из темноты глаза!',
   },
   'espeon': {
     id: 'espeon',
