@@ -4,7 +4,6 @@ export interface Upgrade {
   description: string;
   baseCost: number; 
   effect: {
-    
     type: 'add_to_click' | 'add_passive_from_click_percentage'; 
     value: number;
   };

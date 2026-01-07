@@ -28,7 +28,6 @@ const UmbreonGame = ({
 }) => {
   const [eyes, setEyes] = useState<Eye[]>([]);
   const [score, setScore] = useState(0);
-  // --- ИЗМЕНЕНИЕ: Убрано состояние 'ready'. Игра начинается сразу. ---
   const [gameStatus, setGameStatus] = useState<"playing" | "finished">(
     "playing"
   );
@@ -117,7 +116,7 @@ const UmbreonGame = ({
           setEyes((prev) => prev.filter((e) => e.id !== newEye.id));
         });
 
-        const nextSpawnTime = Math.max(300, 900 - scoreRef.current * 15);
+        const nextSpawnTime = Math.max(600, 900 - scoreRef.current * 15);
         // Проверяем, что игра все еще идет, перед созданием нового спаунера
         if (gameStatus === 'playing') {
             gameIntervals.current.spawner = setTimeout(spawnEye, nextSpawnTime);

@@ -22,20 +22,16 @@ const MinigameIntro = ({ title, instructions, onComplete }: Props) => {
     // Запускаем таймер обратного отсчета
     const interval = setInterval(() => {
       setCountdown(prev => prev - 1);
+      if (countdown === 0) {
+        clearInterval(interval);
+        Animated.timing(opacityAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(onComplete);
+      }
     }, 1000);
-
-    // Завершаем интро через 3 секунды
-    const timeout = setTimeout(() => {
-      clearInterval(interval);
-      // Анимация исчезновения
-      Animated.timing(opacityAnim, { toValue: 0, duration: 300, useNativeDriver: true }).start(onComplete);
-    }, 3000);
 
     return () => {
       clearInterval(interval);
-      clearTimeout(timeout);
     };
-  }, [onComplete, opacityAnim, scaleAnim]);
+  }, [countdown, onComplete, opacityAnim, scaleAnim]);
 
   return (
     <Animated.View style={[styles.container, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}>

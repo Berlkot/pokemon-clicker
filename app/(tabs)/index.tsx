@@ -41,7 +41,7 @@ type FloatingNumber = {
 };
 
 const HOLD_DURATION_MS = 1500;
-const MINIGAME_COOLDOWN_MS = 60000;
+const MINIGAME_COOLDOWN_MS = 10000;
 const CRIT_CHANCE = 0.1;
 const CRIT_MULTIPLIER = 5;
 
