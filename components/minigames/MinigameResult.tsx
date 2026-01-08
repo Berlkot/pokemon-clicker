@@ -29,6 +29,15 @@ const MinigameResult = ({ reward, onClose }: Props) => {
       case 'buff':
         const buffName = reward.buffType === 'xp_multiplier' ? 'Множитель опыта' : 'Шанс крита';
         return { title: 'Превосходно!', description: `Активен бафф "${buffName}" x${reward.multiplier} на ${reward.duration}с!` };
+      case 'penalty':
+        if (reward.penaltyType === 'extra_cooldown') {
+          return { title: 'Неудача!', description: `Штраф: кулдаун миниигры +${reward.value}с.` }
+        }
+        if (reward.penaltyType === 'energy_loss_percent') {
+          return { title: 'Неудача!', description: `Штраф: -${reward.value}% энергии.` }
+        }
+        return { title: 'Неудача!', description: 'В следующий раз повезет больше!' }
+
     }
   };
 

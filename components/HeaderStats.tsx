@@ -19,14 +19,7 @@ const HeaderStats = () => {
         {/* Иконка энергии (например, кристалл или монета) */}
         <FontAwesome5 name="gem" size={16} color={Colors.accent} />
         <Text style={styles.statText}>
-          {formatNumber(gameState.evolutionEnergy)}
-        </Text>
-      </View>
-      <View style={styles.statItem}>
-        {/* Иконка дохода в секунду (молния) */}
-        <FontAwesome5 name="bolt" size={16} color={Colors.lightGray} />
-        <Text style={styles.statText}>
-          {formatNumber(gameState.energyPerSecond)}/s
+          {formatNumber(gameState.evolutionEnergy)} {gameState.energyPerSecond > 0 && <Text style={styles.statPassive}>+{formatNumber(gameState.energyPerSecond)}/s</Text>}
         </Text>
       </View>
     </View>
@@ -55,6 +48,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 5,
   },
+  statPassive: {
+    color: "#fff4ae8a",
+  }
 });
 
 export default HeaderStats;

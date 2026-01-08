@@ -68,12 +68,14 @@ const UmbreonGame = ({
       };
     } else if (finalScore > 8) {
       reward = { type: "xp_boost", value: Math.min(25, 5 + finalScore) };
-    } else if (finalScore > 0) {
+    } else if (finalScore > 5) {
       reward = { type: "xp_boost", value: finalScore };
+    } else  {
+      reward = { type: "penalty", penaltyType: "extra_cooldown", value: 20 };
     }
 
     setTimeout(() => onComplete(reward), 1500);
-  }, [onComplete, gameStatus]); // Добавлена зависимость gameStatus
+  }, [onComplete, gameStatus]);
 
   useEffect(() => {
     // Этот эффект теперь запускается сразу, так как gameStatus изначально 'playing'
@@ -118,8 +120,8 @@ const UmbreonGame = ({
 
         const nextSpawnTime = Math.max(600, 900 - scoreRef.current * 15);
         // Проверяем, что игра все еще идет, перед созданием нового спаунера
-        if (gameStatus === 'playing') {
-            gameIntervals.current.spawner = setTimeout(spawnEye, nextSpawnTime);
+        if (gameStatus === "playing") {
+          gameIntervals.current.spawner = setTimeout(spawnEye, nextSpawnTime);
         }
       };
       spawnEye();
@@ -236,7 +238,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: "rgba(0,0,0,0.5)",
     zIndex: 20,
   },
   finishedText: {
