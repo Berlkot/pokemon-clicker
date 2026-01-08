@@ -94,9 +94,8 @@ const PikachuSpriteComponent = memo(function PikachuSpriteComponent({
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-
 export default function GameScreen() {
-  const { gameState, setGameState } = useGame();
+  const { gameState, setGameState, getBuffInfo } = useGame();
   const { width, height } = useWindowDimensions();
 
   const [floatingNumbers, setFloatingNumbers] = useState<FloatingNumber[]>([]);
@@ -810,10 +809,24 @@ export default function GameScreen() {
         {/* Отображение баффов */}
         <View style={styles.buffsContainer}>
           {gameState.activeBuffs.map((buff) => {
+            const onPress = () => {
+              const { title, description } = getBuffInfo(buff);
+              Alert.alert(title, description);
+            };
+            const buffIconName =
+              buff.type === "xp_multiplier"
+                ? "star"
+                : buff.type === "crit_chance_boost"
+                ? "flash"
+                : "star-four-points";
             const CIRCLE_RADIUS = 18;
             const CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
             return (
-              <View key={buff.id} style={styles.buffIconContainer}>
+              <Pressable
+                key={buff.id}
+                style={styles.buffIconContainer}
+                onPress={onPress}
+              >
                 <View style={styles.buffIconBackground} />
 
                 <Svg width="44" height="44" viewBox="0 0 44 44">
@@ -832,13 +845,13 @@ export default function GameScreen() {
                 </Svg>
                 <View style={styles.buffIcon}>
                   <MaterialCommunityIcons
-                    name="star-four-points"
+                    name={buffIconName}
                     size={20}
                     color="white"
                   />
                   <Text style={styles.buffText}>x{buff.multiplier}</Text>
                 </View>
-              </View>
+              </Pressable>
             );
           })}
         </View>
