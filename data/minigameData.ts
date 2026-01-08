@@ -1,6 +1,7 @@
-export type MinigameReward = 
-  | { type: 'xp_boost'; value: number } 
-  | { type: 'buff'; buffType: 'xp_multiplier' | 'crit_chance_boost'; multiplier: number; duration: number }; 
+export type MinigameReward =
+  | { type: 'xp_boost'; value: number }
+  | { type: 'buff'; buffType: 'xp_multiplier' | 'crit_chance_boost'; multiplier: number; duration: number }
+  | { type: 'penalty'; penaltyType: 'energy_loss_percent' | 'extra_cooldown'; value: number };
 
 
 interface MinigameData {

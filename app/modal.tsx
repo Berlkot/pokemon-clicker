@@ -10,6 +10,7 @@ import {
   View,
   Image,
   TextInput,
+  ScrollView,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import Colors from "../constants/Colors";
@@ -201,171 +202,159 @@ export default function ModalScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Настройки</Text>
-
-      <View style={styles.settingsGroup}>
-        <Text style={styles.groupTitle}>Аккаунт</Text>
-
-        {session ? (
-          <>
-            <Text style={styles.settingLabel}>Никнейм</Text>
-            <TextInput
-              value={nicknameDraft}
-              onChangeText={setNicknameDraft}
-              placeholder="Введите никнейм"
-              style={styles.input}
-            />
-
-            <Pressable
-              style={styles.secondaryButton}
-              onPress={async () => {
-                try {
-                  await updateNickname(nicknameDraft);
-                  Toast.show({
-                    type: "gameToast",
-                    text1: "Готово",
-                    text2: "Никнейм сохранён.",
-                  });
-                } catch (e: any) {
-                  Toast.show({
-                    type: "gameToast",
-                    text1: "Ошибка",
-                    text2: e?.message ?? "Не удалось сохранить никнейм",
-                  });
-                }
-              }}
-            >
-              <Text style={styles.secondaryButtonText}>Сохранить никнейм</Text>
-            </Pressable>
-
-            <Text style={styles.smallText}>
-              Вход выполнен: {session.user.email}
-            </Text>
-
-            <View style={styles.avatarRow}>
-              <View>
-                <Text style={styles.settingLabel}>Аватар</Text>
-                <Pressable
-                  onPress={handlePickAvatar}
-                  style={styles.secondaryButton}
-                >
-                  <Text style={styles.secondaryButtonText}>Выбрать</Text>
-                </Pressable>
-              </View>
-
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, { backgroundColor: "#eee" }]} />
-              )}
-            </View>
-
-            {hasConflict && (
+    <View>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <Text style={styles.title}>Настройки</Text>
+        <View style={styles.settingsGroup}>
+          <Text style={styles.groupTitle}>Аккаунт</Text>
+          {session ? (
+            <>
+              <Text style={styles.settingLabel}>Никнейм</Text>
+              <TextInput
+                value={nicknameDraft}
+                onChangeText={setNicknameDraft}
+                placeholder="Введите никнейм"
+                style={styles.input}
+              />
               <Pressable
                 style={styles.secondaryButton}
-                onPress={() => {
-                  Alert.alert(
-                    "Выбор сохранения",
-                    "Найден локальный и облачный прогресс. Что применить?",
-                    [
-                      {
-                        text: "Более новый",
-                        onPress: async () => {
-                          if (!newerIs) return;
-                          await resolveSaveConflict(newerIs);
-                        },
-                      },
-                      {
-                        text: "Более старый",
-                        onPress: async () => {
-                          if (!olderIs) return;
-                          await resolveSaveConflict(olderIs);
-                        },
-                      },
-                      { text: "Отмена", style: "cancel" },
-                    ]
-                  );
+                onPress={async () => {
+                  try {
+                    await updateNickname(nicknameDraft);
+                    Toast.show({
+                      type: "gameToast",
+                      text1: "Готово",
+                      text2: "Никнейм сохранён.",
+                    });
+                  } catch (e: any) {
+                    Toast.show({
+                      type: "gameToast",
+                      text1: "Ошибка",
+                      text2: e?.message ?? "Не удалось сохранить никнейм",
+                    });
+                  }
                 }}
               >
-                <Text style={styles.secondaryButtonText}>
-                  Выбрать сейв (есть конфликт)
-                </Text>
+                <Text style={styles.secondaryButtonText}>Сохранить никнейм</Text>
               </Pressable>
-            )}
-
-            <Pressable style={styles.secondaryButton} onPress={handleSignOut}>
-              <Text style={styles.secondaryButtonText}>Выйти</Text>
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Email"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={styles.input}
-            />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Пароль"
-              secureTextEntry
-              style={styles.input}
-            />
-
-            <View style={styles.authButtonsRow}>
-              <Pressable style={styles.secondaryButton} onPress={handleSignIn}>
-                <Text style={styles.secondaryButtonText}>Войти</Text>
+              <Text style={styles.smallText}>
+                Вход выполнен: {session.user.email}
+              </Text>
+              <View style={styles.avatarRow}>
+                <View>
+                  <Text style={styles.settingLabel}>Аватар</Text>
+                  <Pressable
+                    onPress={handlePickAvatar}
+                    style={styles.secondaryButton}
+                  >
+                    <Text style={styles.secondaryButtonText}>Выбрать</Text>
+                  </Pressable>
+                </View>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, { backgroundColor: "#eee" }]} />
+                )}
+              </View>
+              {hasConflict && (
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={() => {
+                    Alert.alert(
+                      "Выбор сохранения",
+                      "Найден локальный и облачный прогресс. Что применить?",
+                      [
+                        {
+                          text: "Более новый",
+                          onPress: async () => {
+                            if (!newerIs) return;
+                            await resolveSaveConflict(newerIs);
+                          },
+                        },
+                        {
+                          text: "Более старый",
+                          onPress: async () => {
+                            if (!olderIs) return;
+                            await resolveSaveConflict(olderIs);
+                          },
+                        },
+                        { text: "Отмена", style: "cancel" },
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.secondaryButtonText}>
+                    Выбрать сейв (есть конфликт)
+                  </Text>
+                </Pressable>
+              )}
+              <Pressable style={styles.secondaryButton} onPress={handleSignOut}>
+                <Text style={styles.secondaryButtonText}>Выйти</Text>
               </Pressable>
-              <Pressable style={styles.secondaryButton} onPress={handleSignUp}>
-                <Text style={styles.secondaryButtonText}>Регистрация</Text>
-              </Pressable>
-            </View>
-
-            <Text style={styles.smallText}>
-              Можно играть офлайн — облачное сохранение включится после входа.
-            </Text>
-          </>
-        )}
-      </View>
-
-      <View style={styles.settingsGroup}>
-        <SettingRow
-          label="Звуковые эффекты"
-          value={gameState.settings.isSoundEnabled}
-          onValueChange={(value) => updateSettings({ isSoundEnabled: value })}
-        />
-        <SettingRow
-          label="Вибрация"
-          value={gameState.settings.isVibrationEnabled}
-          onValueChange={(value) =>
-            updateSettings({ isVibrationEnabled: value })
-          }
-        />
-      </View>
-
-      <Pressable
-        style={styles.resetButton}
-        onPress={handleResetPress}
-        testID="reset-progress-button"
-      >
-        <Text style={styles.resetButtonText}>Сбросить прогресс</Text>
-      </Pressable>
-
-      <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
+            </>
+          ) : (
+            <>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={styles.input}
+              />
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Пароль"
+                secureTextEntry
+                style={styles.input}
+              />
+              <View style={styles.authButtonsRow}>
+                <Pressable style={styles.secondaryButton} onPress={handleSignIn}>
+                  <Text style={styles.secondaryButtonText}>Войти</Text>
+                </Pressable>
+                <Pressable style={styles.secondaryButton} onPress={handleSignUp}>
+                  <Text style={styles.secondaryButtonText}>Регистрация</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.smallText}>
+                Можно играть офлайн — облачное сохранение включится после входа.
+              </Text>
+            </>
+          )}
+        </View>
+        <View style={styles.settingsGroup}>
+          <SettingRow
+            label="Звуковые эффекты"
+            value={gameState.settings.isSoundEnabled}
+            onValueChange={(value) => updateSettings({ isSoundEnabled: value })}
+          />
+          <SettingRow
+            label="Вибрация"
+            value={gameState.settings.isVibrationEnabled}
+            onValueChange={(value) =>
+              updateSettings({ isVibrationEnabled: value })
+            }
+          />
+        </View>
+        <Pressable
+          style={styles.resetButton}
+          onPress={handleResetPress}
+          testID="reset-progress-button"
+        >
+          <Text style={styles.resetButtonText}>Сбросить прогресс</Text>
+        </Pressable>
+        <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  scrollContainer: {
+    padding: 20,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
   },
   title: { fontSize: 20, fontWeight: "bold" },
   separator: {
@@ -381,6 +370,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: Colors.danger,
     borderRadius: 8,
+    marginBottom: 100,
   },
   resetButtonText: {
     color: "white",

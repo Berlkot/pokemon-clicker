@@ -5,6 +5,7 @@ import Toast from "react-native-toast-message";
 import { supabase } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 import * as FileSystem from "expo-file-system/legacy";
+import { pokemonDatabase } from "../data/pokemonData";
 
 interface UpgradesState {
   [upgradeId: string]: number;
@@ -28,6 +29,11 @@ interface GameState {
   activeMinigameId: string | null;
   nextMinigameTime: number;
   pausedCooldownTime: number;
+  xpPerClick: number;
+  xpPerSecond: number;
+  minigameCooldownStartedAt: number
+minigameCooldownTotalMs: number
+
 }
 
 const INITIAL_GAME_STATE: GameState = {
@@ -47,6 +53,11 @@ const INITIAL_GAME_STATE: GameState = {
   activeMinigameId: null,
   nextMinigameTime: 0,
   pausedCooldownTime: 0,
+  xpPerClick: 1,
+  xpPerSecond: 0,
+  minigameCooldownStartedAt: 0,
+  minigameCooldownTotalMs: 100000,
+
 };
 
 export interface ActiveBuff {
@@ -136,22 +147,29 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
           const timeOfflineInSeconds =
             (Date.now() - savedData.lastSavedTime) / 1000;
-          const offlineEarnings =
-            timeOfflineInSeconds * savedData.energyPerSecond;
-          // savedData.evolutionEnergy = 1000000000;
-          savedData.activeMinigameId = null;
 
-          if (offlineEarnings > 1) {
-            savedData.evolutionEnergy += offlineEarnings;
+          const offlineEnergy =
+            timeOfflineInSeconds * savedData.energyPerSecond;
+          const offlineXp = timeOfflineInSeconds * (savedData.xpPerSecond ?? 0);
+
+          if (offlineEnergy >= 1 || offlineXp >= 1) {
+            savedData.evolutionEnergy += offlineEnergy;
+            savedData.currentPokemonExp += Math.floor(offlineXp);
+            const energyString = offlineEnergy
+              ? formatNumber(Math.floor(offlineEnergy)) + " энергии"
+              : "";
+            const xpString = offlineXp
+              ? formatNumber(Math.floor(offlineXp)) + " опыта"
+              : "";
             Toast.show({
               type: "gameToast",
               text1: "С возвращением!",
-              text2: `За время вашего отсутствия вы заработали ${formatNumber(
-                Math.floor(offlineEarnings)
-              )} энергии!`,
+              text2: `За время вашего отсутствия вы заработали ${energyString}${
+                !!energyString && !!xpString ? " и " : ""
+              }${xpString}!`,
             });
           }
-
+          savedData.activeMinigameId = null;
           setGameState(savedData);
         } else {
           setGameState(INITIAL_GAME_STATE);
@@ -191,15 +209,22 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!gameState || gameState.energyPerSecond === 0) return;
+    if (
+      !gameState ||
+      (gameState.energyPerSecond === 0 && gameState.xpPerSecond === 0)
+    )
+      return;
     const interval = setInterval(() => {
-      setGameState((prevState) => {
-        if (!prevState) return null;
-        return {
-          ...prevState,
-          evolutionEnergy:
-            prevState.evolutionEnergy + prevState.energyPerSecond,
+      setGameState((prev) => {
+        if (!prev) return null;
+
+        const next = {
+          ...prev,
+          evolutionEnergy: prev.evolutionEnergy + prev.energyPerSecond,
+          currentPokemonExp: prev.currentPokemonExp + (prev.xpPerSecond ?? 0),
         };
+
+        return applyLevelUps(next);
       });
     }, 1000);
     return () => clearInterval(interval);
@@ -233,6 +258,34 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
     return copy as GameState;
+  };
+  const applyLevelUps = (state: GameState): GameState => {
+    let currentPokemonId = state.currentPokemonId;
+    let currentPokemonLevel = state.currentPokemonLevel;
+    let currentPokemonExp = state.currentPokemonExp;
+
+    while (true) {
+      const requiredExp = Math.floor(100 * Math.pow(currentPokemonLevel, 1.5));
+      if (currentPokemonExp < requiredExp) break;
+
+      currentPokemonExp -= requiredExp;
+      currentPokemonLevel += 1;
+
+      const pokemonData = pokemonDatabase[currentPokemonId];
+      if (
+        pokemonData?.evolvesTo &&
+        currentPokemonLevel >= (pokemonData.evolutionLevel ?? 999)
+      ) {
+        currentPokemonId = pokemonData.evolvesTo;
+      }
+    }
+
+    return {
+      ...state,
+      currentPokemonId,
+      currentPokemonLevel,
+      currentPokemonExp,
+    };
   };
 
   const fetchCloudSave = async (userId: string) => {
@@ -450,25 +503,22 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const updateNickname = async (newNickname: string) => {
-  if (!session?.user?.id) throw new Error('Not authenticated')
+    if (!session?.user?.id) throw new Error("Not authenticated");
 
-  const trimmed = newNickname.trim()
-  if (trimmed.length < 1 || trimmed.length > 20) {
-    throw new Error('Никнейм должен быть от 1 до 20 символов')
-  }
+    const trimmed = newNickname.trim();
+    if (trimmed.length < 1 || trimmed.length > 20) {
+      throw new Error("Никнейм должен быть от 1 до 20 символов");
+    }
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert({
+    const { error } = await supabase.from("profiles").upsert({
       user_id: session.user.id,
       nickname: trimmed,
       updated_at: new Date().toISOString(),
-    })
+    });
 
-  if (error) throw error
-  setNickname(trimmed)
-}
-
+    if (error) throw error;
+    setNickname(trimmed);
+  };
 
   return (
     <GameContext.Provider
