@@ -32,7 +32,8 @@ interface GameState {
   xpPerClick: number;
   xpPerSecond: number;
   minigameCooldownStartedAt: number
-minigameCooldownTotalMs: number
+minigameCooldownTotalMs: number,
+ 
 
 }
 
@@ -96,6 +97,7 @@ export interface IGameContext {
   blockReason: string | null;
   nickname: string | null;
   updateNickname: (nickname: string) => Promise<void>;
+  getBuffInfo: (buff: ActiveBuff) => { title: string; description: string };
 }
 
 export const GameContext = createContext<IGameContext | undefined>(undefined);
@@ -287,6 +289,29 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
       currentPokemonExp,
     };
   };
+
+  const getBuffInfo = (buff: { type: string; multiplier: number; expiresAt: number }) => {
+  const secondsLeft = Math.max(0, Math.ceil((buff.expiresAt - Date.now()) / 1000))
+
+  switch (buff.type) {
+    case 'xp_multiplier':
+      return {
+        title: 'Множитель опыта',
+        description: `Опыт умножается на x${buff.multiplier}.\nОсталось: ${secondsLeft}с.`,
+      }
+    case 'crit_chance_boost':
+      return {
+        title: 'Шанс крита',
+        description: `Шанс крита увеличен (множитель: x${buff.multiplier}).\nОсталось: ${secondsLeft}с.`,
+      }
+    default:
+      return {
+        title: 'Бафф',
+        description: `Множитель: x${buff.multiplier}.\nОсталось: ${secondsLeft}с.`,
+      }
+  }
+}
+
 
   const fetchCloudSave = async (userId: string) => {
     const { data, error } = await supabase
@@ -542,6 +567,7 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         uploadAvatar,
         isBlocked,
         blockReason,
+        getBuffInfo
       }}
     >
       {children}
