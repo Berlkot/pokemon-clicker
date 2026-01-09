@@ -27,7 +27,7 @@ describe('Reset Progress Functional Test', () => {
     
     const { getByText, getByTestId, unmount, rerender } = render(<GameScreen />, { wrapper: Wrapper });
     
-    await waitFor(() => expect(getByText('Опыт: 0 / 100')).toBeTruthy());
+    await waitFor(() => expect(getByText(/Опыт:\s*0\s*\/\s*100/)).toBeTruthy());
     
     const pokemonButton = getByTestId('pokemon-pressable');
     for (let i = 0; i < 10; i++) {
@@ -36,7 +36,7 @@ describe('Reset Progress Functional Test', () => {
       });
     }
     
-    await waitFor(() => expect(getByText('Опыт: 10 / 100')).toBeTruthy());
+    await waitFor(() => expect(getByText(/Опыт:\s*10\s*\/\s*100/)).toBeTruthy());
 
     
     
@@ -61,7 +61,7 @@ describe('Reset Progress Functional Test', () => {
     
     
     
-    await waitFor(() => expect(getByText('Опыт: 0 / 100')).toBeTruthy());
+    await waitFor(() => expect(getByText(/Опыт:\s*0\s*\/\s*100/)).toBeTruthy());
     await waitFor(() => expect(getByText(/Иивии/)).toBeTruthy());
     await waitFor(() => expect(getByText(/\(Ур\. 1\)/)).toBeTruthy());
   });

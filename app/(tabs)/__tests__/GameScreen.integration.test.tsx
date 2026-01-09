@@ -35,7 +35,7 @@ describe('GameScreen Integration', () => {
   it('should update evolution energy on screen when pokemon is clicked', async () => {
     const { getByText, getByTestId } = render(<GameScreen />);
 
-    await waitFor(() => expect(getByText('Опыт: 0 / 100')).toBeTruthy());
+    await waitFor(() => expect(getByText(/Опыт:\s*0\s*\/\s*100/)).toBeTruthy());
 
     const pokemonButton = getByTestId('pokemon-pressable');
 
@@ -43,11 +43,11 @@ describe('GameScreen Integration', () => {
       fireEvent.press(pokemonButton);
     });
 
-    await waitFor(() => expect(getByText('Опыт: 1 / 100')).toBeTruthy());
+    await waitFor(() => expect(getByText(/Опыт:\s*1\s*\/\s*100/)).toBeTruthy());
 
     await act(async () => {
       fireEvent.press(pokemonButton);
     });
-    await waitFor(() => expect(getByText('Опыт: 2 / 100')).toBeTruthy());
+    await waitFor(() => expect(getByText(/Опыт:\s*2\s*\/\s*100/)).toBeTruthy());
   });
 });
