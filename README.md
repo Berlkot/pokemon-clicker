@@ -1,50 +1,46 @@
-# Welcome to your Expo app 👋
+# Pokemon Evolution (React Native / Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Казуальная кликер‑игра: кликай по покемону, получай энергию и опыт, повышай уровень, эволюционируй и покупай улучшения.   
+Есть облачное сохранение и авторизация через Supabase, а также “вознесение” (престиж) с отдельной валютой и постоянными улучшениями. 
 
-## Get started
+## Возможности
+- Игровой цикл: энергия/сек, энергия/клик, опыт/клик и опыт/сек, повышение уровня и эволюции покемона. 
+- Магазин улучшений (обычные апгрейды) из базы `upgradesDatabase`. 
+- Вознесение: сброс прогресса с начислением валюты вознесения и покупка постоянных “эпических” апгрейдов. 
+- Таблица лидеров (Leaderboard) через RPC `get_leaderboard` в Supabase; для неавторизованных — предложение зайти через настройки. 
+- Экран настроек (modal) с доступом из шапки табов. 
 
-1. Install dependencies
+## Технологии
+- Expo Router + React Native (табовая навигация и modal‑экран настроек). 
+- Supabase Auth + DB (профиль, облачные сейвы, лидерборд). 
+- AsyncStorage для локального сохранения. 
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+## Быстрый старт
+1) Установка зависимостей:
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2) Запуск проекта:
+```bash
+npx expo start
+```
 
-## Learn more
+## Настройка Supabase
+Проект использует:
+- Таблица `profiles` (минимум: `user_id`, `nickname`, `avatar_url`, `avatar_path`) для профиля/аватара. 
+- Таблица `game_saves` (минимум: `user_id`, `save` (json), `updated_at`) для облачного сохранения. 
+- RPC `get_leaderboard(limit_count int)` — отдаёт публичный топ для экрана Leaderboard. 
+- Ключи `EXPO_PUBLIC_SUPABASE_URL` и `EXPO_PUBLIC_SUPABASE_ANON_KEY` в .env для работы подключения.
 
-To learn more about developing your project with Expo, look at the following resources:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Навигация (экраны)
+- `index` — основной игровой экран (“Игра”).
+- `upgrades` — магазин улучшений (“Улучшения”).
+- `leaderboard` — рейтинг (“Рейтинг”).
+- `modal` — настройки (открывается из шапки табов).
 
-## Join the community
+## Локальные/облачные сейвы
+- Локально состояние игры хранится в AsyncStorage (ключ `@PokemonEvolution:gameData`). 
+- В облаке сейв читается/пишется в `game_saves` по `user_id`; при конфликте времени сохранения предусмотрен выбор источника. 
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
