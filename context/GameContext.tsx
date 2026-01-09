@@ -31,10 +31,11 @@ interface GameState {
   pausedCooldownTime: number;
   xpPerClick: number;
   xpPerSecond: number;
-  minigameCooldownStartedAt: number
-minigameCooldownTotalMs: number,
- 
-
+  minigameCooldownStartedAt: number;
+  minigameCooldownTotalMs: number;
+  ascensionCurrency: number;
+  ascensionUpgrades: { [id: string]: number };
+  ascensionCount: number;
 }
 
 const INITIAL_GAME_STATE: GameState = {
@@ -58,7 +59,9 @@ const INITIAL_GAME_STATE: GameState = {
   xpPerSecond: 0,
   minigameCooldownStartedAt: 0,
   minigameCooldownTotalMs: 100000,
-
+  ascensionUpgrades: {},
+  ascensionCurrency: 0,
+  ascensionCount: 0,
 };
 
 export interface ActiveBuff {
@@ -98,6 +101,7 @@ export interface IGameContext {
   nickname: string | null;
   updateNickname: (nickname: string) => Promise<void>;
   getBuffInfo: (buff: ActiveBuff) => { title: string; description: string };
+  ascend: (bonusCrystals: number) => void;
 }
 
 export const GameContext = createContext<IGameContext | undefined>(undefined);
@@ -290,28 +294,34 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     };
   };
 
-  const getBuffInfo = (buff: { type: string; multiplier: number; expiresAt: number }) => {
-  const secondsLeft = Math.max(0, Math.ceil((buff.expiresAt - Date.now()) / 1000))
+  const getBuffInfo = (buff: {
+    type: string;
+    multiplier: number;
+    expiresAt: number;
+  }) => {
+    const secondsLeft = Math.max(
+      0,
+      Math.ceil((buff.expiresAt - Date.now()) / 1000)
+    );
 
-  switch (buff.type) {
-    case 'xp_multiplier':
-      return {
-        title: 'Множитель опыта',
-        description: `Опыт умножается на x${buff.multiplier}.\nОсталось: ${secondsLeft}с.`,
-      }
-    case 'crit_chance_boost':
-      return {
-        title: 'Шанс крита',
-        description: `Шанс крита увеличен (множитель: x${buff.multiplier}).\nОсталось: ${secondsLeft}с.`,
-      }
-    default:
-      return {
-        title: 'Бафф',
-        description: `Множитель: x${buff.multiplier}.\nОсталось: ${secondsLeft}с.`,
-      }
-  }
-}
-
+    switch (buff.type) {
+      case "xp_multiplier":
+        return {
+          title: "Множитель опыта",
+          description: `Опыт умножается на x${buff.multiplier}.\nОсталось: ${secondsLeft}с.`,
+        };
+      case "crit_chance_boost":
+        return {
+          title: "Шанс крита",
+          description: `Шанс крита увеличен (множитель: x${buff.multiplier}).\nОсталось: ${secondsLeft}с.`,
+        };
+      default:
+        return {
+          title: "Бафф",
+          description: `Множитель: x${buff.multiplier}.\nОсталось: ${secondsLeft}с.`,
+        };
+    }
+  };
 
   const fetchCloudSave = async (userId: string) => {
     const { data, error } = await supabase
@@ -502,7 +512,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
 
     const ext = imageUri.split(".").pop() || "jpg";
     const path = `${session.user.id}/avatar_${Date.now()}.${ext}`;
-    console.log("path", path);
 
     const { error: uploadError } = await supabase.storage
       .from("avatars")
@@ -544,6 +553,29 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     if (error) throw error;
     setNickname(trimmed);
   };
+  
+
+  const ascend = (crystalsReward: number) => {
+    setGameState((prev) => {
+      if (!prev) return null;
+
+      const savedSettings = prev.settings;
+      const savedAscensionCurrency =
+        (prev.ascensionCurrency || 0) + crystalsReward;
+      const savedAscensionCount = (prev.ascensionCount || 0) + 1;
+      const savedAscensionUpgrades = prev.ascensionUpgrades || {};
+
+      return {
+        ...INITIAL_GAME_STATE,
+        settings: savedSettings,
+        ascensionCurrency: savedAscensionCurrency,
+        ascensionCount: savedAscensionCount,
+        ascensionUpgrades: savedAscensionUpgrades,
+        // Можно дать небольшой бонус к стартовой энергии за каждое вознесение, если хочешь
+        evolutionEnergy: 0,
+      };
+    });
+  };
 
   return (
     <GameContext.Provider
@@ -567,7 +599,8 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         uploadAvatar,
         isBlocked,
         blockReason,
-        getBuffInfo
+        getBuffInfo,
+        ascend,
       }}
     >
       {children}
