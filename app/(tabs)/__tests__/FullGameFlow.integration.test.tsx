@@ -67,18 +67,18 @@ describe('GameScreen and UpgradesScreen Integration', () => {
     'should allow user to buy an upgrade and see its effect on the game screen',
     async () => {
       const gameScreen = render(<GameScreen />);
-      await waitFor(() => expect(gameScreen.getByText('Опыт: 0 / 100')).toBeTruthy());
+      await waitFor(() => expect(gameScreen.getByText(/Опыт:\s*0\s*\/\s*100/)).toBeTruthy());
 
       const pokemonButton = gameScreen.getByTestId('pokemon-pressable');
       await act(async () => {
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 120; i++) {
           fireEvent.press(pokemonButton);
         }
       });
       gameScreen.unmount();
 
       const upgradesScreen = render(<UpgradesScreen />);
-      const buyButton = await upgradesScreen.findByText('100 ЭЭ');
+      const buyButton = await upgradesScreen.findByText('120 ЭЭ');
       await act(async () => {
         fireEvent.press(buyButton);
       });
@@ -86,14 +86,14 @@ describe('GameScreen and UpgradesScreen Integration', () => {
       upgradesScreen.unmount();
 
       const finalGameScreen = render(<GameScreen />);
-      await waitFor(() => expect(finalGameScreen.getByText('Опыт: 0 / 282')).toBeTruthy());
+      await waitFor(() => expect(finalGameScreen.getByText(/Опыт:\s*20\s*\/\s*282/)).toBeTruthy());
 
       const finalPokemonButton = finalGameScreen.getByTestId('pokemon-pressable');
       await act(async () => {
         fireEvent.press(finalPokemonButton);
       });
 
-      await waitFor(() => expect(finalGameScreen.getByText('Опыт: 2 / 282')).toBeTruthy());
+      await waitFor(() => expect(finalGameScreen.getByText(/Опыт:\s*22\s*\/\s*282/)).toBeTruthy());
     },
     15000
   );

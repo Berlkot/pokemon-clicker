@@ -34,8 +34,8 @@ export const recalculateStats = (
   let newEnergyPerClick = 1;
   let newXpPerClick = 1;
 
-  const clickPowerBonus = 1 + ascensionUpgrades["crystal_click_power"] || 0;
-  const xpPowerBonus = 1 + ascensionUpgrades["crystal_click_power"] || 0;
+  const clickPowerBonus = 1 + (ascensionUpgrades["crystal_click_power"] || 0);
+  const xpPowerBonus = 1 + (ascensionUpgrades["crystal_click_power"] || 0);
 
   const clickLvl = upgrades["stronger_click"] || 0;
   newEnergyPerClick +=
