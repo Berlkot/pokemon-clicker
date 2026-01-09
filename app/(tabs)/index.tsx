@@ -95,7 +95,7 @@ const PikachuSpriteComponent = memo(function PikachuSpriteComponent({
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
 export default function GameScreen() {
-  const { gameState, setGameState, getBuffInfo } = useGame();
+  const { gameState, setGameState, getBuffInfo, ascend } = useGame();
   const { width, height } = useWindowDimensions();
 
   const [floatingNumbers, setFloatingNumbers] = useState<FloatingNumber[]>([]);
@@ -116,6 +116,7 @@ export default function GameScreen() {
   const transitionPokemonScale = useRef(new Animated.Value(1)).current;
   const transitionPokemonOpacity = useRef(new Animated.Value(0)).current;
   const transitionWipe = useRef(new Animated.Value(0)).current;
+
   const [xpFloatingNumbers, setXpFloatingNumbers] = useState<
     XpFloatingNumber[]
   >([]);
@@ -526,6 +527,7 @@ export default function GameScreen() {
     if (gameState.settings.isVibrationEnabled) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+
     let energyGained = gameState.energyPerClick;
     let totalMultiplier = 1;
 
@@ -538,7 +540,10 @@ export default function GameScreen() {
     );
     totalMultiplier *= energyMultiplierFromBuffs;
 
-    const isCrit = Math.random() < CRIT_CHANCE;
+    const ascensionCritBonus =
+      (gameState.ascensionUpgrades?.["fates_favor"] || 0) * 0.01;
+    const isCrit = Math.random() < CRIT_CHANCE + ascensionCritBonus;
+
     if (isCrit) {
       totalMultiplier *= CRIT_MULTIPLIER;
     }
@@ -686,9 +691,14 @@ export default function GameScreen() {
           }
         }
       }
-
-      const cooldownTotalMs = MINIGAME_COOLDOWN_MS + extraCooldownMs;
+      const cooldownReduction =
+        (gameState!.ascensionUpgrades?.["time_warper"] || 0) * 1000;
+      const cooldownTotalMs = Math.max(
+        3000,
+        MINIGAME_COOLDOWN_MS + extraCooldownMs - cooldownReduction
+      );
       const cooldownStartedAt = Date.now();
+
       const newNextMinigameTime = cooldownStartedAt + cooldownTotalMs;
 
       return {
@@ -770,6 +780,13 @@ export default function GameScreen() {
       </View>
     );
   }
+  const calculateAscensionReward = () => {
+    const baseReward = 2;
+    const extraLevels = Math.max(0, gameState.currentPokemonLevel - 25);
+    const bonusReward = Math.floor(extraLevels / 10);
+    return baseReward + bonusReward;
+  };
+  const ascensionReward = calculateAscensionReward();
 
   const requiredExpForLevelUp = Math.floor(
     100 * Math.pow(gameState.currentPokemonLevel, 1.5)
@@ -797,6 +814,9 @@ export default function GameScreen() {
     inputRange: [0, 0.5, 1],
     outputRange: [0, 1, 0],
   });
+  const canAscend =
+    gameState.currentPokemonId === "sylveon" &&
+    gameState.currentPokemonLevel >= 25;
 
   return (
     <Animated.View
@@ -985,6 +1005,33 @@ export default function GameScreen() {
               );
             }
           )}
+          {canAscend && (
+            <Pressable
+              style={styles.ascendButton}
+              onPress={() => {
+                Alert.alert(
+                  "Вознесение",
+                  `Сбросить прогресс и получить ${ascensionReward} валюту вознесения?\nЗа данную валюту можно будет купить постоянные эпические улучшения в магазине.`,
+                  [
+                    { text: "Отмена", style: "cancel" },
+                    {
+                      text: "Вознестись",
+                      style: "destructive",
+                      onPress: () => ascend(calculateAscensionReward()),
+                    },
+                  ]
+                );
+              }}
+            >
+              <Image
+                source={require("../../assets/images/ascension.png")}
+                style={styles.ascendIcon}
+              />
+              <Text style={styles.ascendText}>
+                Вознестись (+{ascensionReward})
+              </Text>
+            </Pressable>
+          )}
         </View>
         <Animated.View
           style={[
@@ -1007,10 +1054,10 @@ export default function GameScreen() {
         <View style={styles.experienceContainer}>
           <View style={styles.expRow}>
             <Text style={styles.expText}>
-              Опыт: {formatNumber(gameState.currentPokemonExp)} /{" "}
+              Опыт: {formatNumber(gameState.currentPokemonExp)} /
               {formatNumber(requiredExpForLevelUp)}
             </Text>
-            {gameState.xpPerSecond && (
+            {gameState.xpPerSecond > 0 && (
               <View style={styles.xpPerSecondBadge}>
                 <Text style={styles.xpPerSecondText}>
                   +{formatNumber(gameState.xpPerSecond ?? 0)}/s
@@ -1312,4 +1359,15 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 12,
   },
+  ascendButton: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
+  ascendIcon: { width: 20, height: 20, marginRight: 8 },
+  ascendText: { color: "white", fontWeight: "900" },
 });

@@ -26,6 +26,7 @@ export default function TabsLayout() {
     : Colors.primary;
   return (
     <Tabs
+      initialRouteName="index"
       screenOptions={{
         tabBarActiveTintColor: activeColor,
         tabBarInactiveTintColor: "rgba(255, 255, 255, 0.5)",
@@ -40,6 +41,37 @@ export default function TabsLayout() {
         headerTintColor: "white",
       }}
     >
+      <Tabs.Screen
+        name="leaderboard"
+        listeners={{
+          tabPress: (e) => {
+            if (gameState?.activeMinigameId) e.preventDefault();
+          },
+        }}
+        options={{
+          title: "Рейтинг",
+          headerTitle: () => <HeaderStats />,
+          tabBarIcon: ({ color }) => <TabBarIcon name="trophy" color={color} />,
+          headerRight: () => (
+            <Link href="/modal" asChild>
+              <Pressable
+                onPress={(e) => {
+                  if (gameState?.activeMinigameId) e.preventDefault();
+                }}
+              >
+                {({ pressed }) => (
+                  <FontAwesome
+                    name="cog"
+                    size={24}
+                    color="white"
+                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
+                  />
+                )}
+              </Pressable>
+            </Link>
+          ),
+        }}
+      />
       <Tabs.Screen
         name="index"
         listeners={{
@@ -59,11 +91,11 @@ export default function TabsLayout() {
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable
-              onPress={(e) => {
-                if (gameState?.activeMinigameId) {
-                  e.preventDefault();
-                }
-              }}
+                onPress={(e) => {
+                  if (gameState?.activeMinigameId) {
+                    e.preventDefault();
+                  }
+                }}
               >
                 {({ pressed }) => (
                   <FontAwesome

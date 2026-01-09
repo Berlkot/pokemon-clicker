@@ -15,24 +15,37 @@ import Toast from "react-native-toast-message";
 import Colors from "../../constants/Colors";
 import { useGame } from "../../context/GameContext";
 import { pokemonDatabase } from "../../data/pokemonData";
-import { Upgrade, upgradesDatabase } from "../../data/upgradesData";
+import {
+  Upgrade,
+  upgradesDatabase,
+  ascensionUpgradesDatabase,
+} from "../../data/upgradesData";
 import { formatNumber } from "../../utils/formatNumber";
 import BackgroundGradient from "../../components/BackgroundGradient";
+import format from "../../utils/formatString";
 
 // Функции и компонент UpgradeItem остаются без изменений
-export const recalculateStats = (upgrades: { [key: string]: number }) => {
-  let newEnergyPerClick = 1;
+export const recalculateStats = (
+  upgrades: { [key: string]: number },
+  ascensionUpgrades: { [key: string]: number } = {}
+) => {
   let newEnergyPerSecond = 0;
-
-  let newXpPerClick = 1;
   let newXpPerSecond = 0;
+  let newEnergyPerClick = 1;
+  let newXpPerClick = 1;
+
+  const clickPowerBonus = 1 + ascensionUpgrades["crystal_click_power"] || 0;
+  const xpPowerBonus = 1 + ascensionUpgrades["crystal_click_power"] || 0;
 
   const clickLvl = upgrades["stronger_click"] || 0;
   newEnergyPerClick +=
-    clickLvl * upgradesDatabase["stronger_click"].effect.value;
+    clickLvl *
+    upgradesDatabase["stronger_click"].effect.value *
+    clickPowerBonus;
 
   const xpClickLvl = upgrades["trainer_study"] || 0;
-  newXpPerClick += xpClickLvl * upgradesDatabase["trainer_study"].effect.value;
+  newXpPerClick +=
+    xpClickLvl * upgradesDatabase["trainer_study"].effect.value * xpPowerBonus;
 
   const pikachuLvl = upgrades["pikachu_helper"] || 0;
   if (pikachuLvl > 0) {
@@ -54,20 +67,27 @@ export const recalculateStats = (upgrades: { [key: string]: number }) => {
   };
 };
 
-const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
+const UpgradeItem = ({
+  upgrade,
+  ascensionBonus = 1,
+}: {
+  upgrade: Upgrade;
+  ascensionBonus?: number;
+}) => {
   const { gameState, setGameState } = useGame();
   if (!gameState) return null;
+  const effectiveValue = upgrade.effect.value * ascensionBonus;
   const currentLevel = gameState.upgrades[upgrade.id] || 0;
   const cost = Math.floor(upgrade.baseCost * Math.pow(1.15, currentLevel));
   const canAfford = gameState.evolutionEnergy >= cost;
 
-  const before = recalculateStats(gameState.upgrades);
+  const before = recalculateStats(gameState.upgrades, gameState.ascensionUpgrades);
 
   const nextUpgrades = {
     ...gameState.upgrades,
     [upgrade.id]: (gameState.upgrades[upgrade.id] || 0) + 1,
   };
-  const after = recalculateStats(nextUpgrades);
+  const after = recalculateStats(nextUpgrades, gameState.ascensionUpgrades);
 
   const statLine = (() => {
     switch (upgrade.effect.type) {
@@ -124,22 +144,16 @@ const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
   };
   return (
     <View style={styles.upgradeCard}>
-      <FontAwesome5
-        name={
-          upgrade.icon
-        }
-        size={40}
-        color={Colors.primary}
-      />
+      <FontAwesome5 name={upgrade.icon} size={40} color={Colors.primary} />
       <View style={styles.infoContainer}>
         <Text style={styles.upgradeTitle}>
-          {upgrade.title} (Ур. {currentLevel})
-          {'\n'}
+          {upgrade.title} (Ур. {currentLevel}){"\n"}
           <Text style={styles.upgradeDelta}>{statLine}</Text>
         </Text>
 
-
-        <Text style={styles.upgradeDescription}>{upgrade.description}</Text>
+        <Text style={styles.upgradeDescription}>
+          {format(upgrade.description, effectiveValue)}
+        </Text>
       </View>
       <Pressable
         android_ripple={{ color: Colors.primary, borderless: true }}
@@ -152,6 +166,79 @@ const UpgradeItem = ({ upgrade }: { upgrade: Upgrade }) => {
         disabled={!canAfford}
       >
         <Text style={styles.buyButtonText}>{formatNumber(cost)} ЭЭ</Text>
+      </Pressable>
+    </View>
+  );
+};
+
+const AscensionUpgradeItem = ({ upgrade }: { upgrade: any }) => {
+  const { gameState, setGameState } = useGame();
+  if (!gameState) return null;
+
+  const currentLevel = gameState.ascensionUpgrades?.[upgrade.id] || 0;
+  const cost = Math.floor(upgrade.baseCost * Math.pow(1.35, currentLevel)); // можно подкрутить
+  const canAfford = gameState.ascensionCurrency >= cost;
+  const isUnlocked = gameState.ascensionCount > 0;
+
+  const handlePurchase = () => {
+    if (!isUnlocked) return;
+    if (!canAfford) {
+      Alert.alert("Недостаточно валюты вознесения!");
+      return;
+    }
+
+    setGameState((prev) => {
+      if (!prev) return null;
+      const lvl = prev.ascensionUpgrades?.[upgrade.id] || 0;
+
+      return {
+        ...prev,
+        ascensionCurrency: prev.ascensionCurrency - cost,
+        ascensionUpgrades: {
+          ...(prev.ascensionUpgrades || {}),
+          [upgrade.id]: lvl + 1,
+        },
+      };
+    });
+
+    Toast.show({
+      type: "gameToast",
+      text1: "Улучшение вознесения куплено!",
+      text2: `${upgrade.title} теперь Уровень ${currentLevel + 1}`,
+    });
+  };
+
+  return (
+    <View style={[styles.upgradeCard, !isUnlocked && styles.lockedCard]}>
+      <FontAwesome5
+        name={upgrade.icon}
+        size={22}
+        color={isUnlocked ? Colors.primary : "#999"}
+      />
+
+      <View style={styles.infoContainer}>
+        <Text style={styles.upgradeTitle}>
+          {upgrade.title} (Ур. {currentLevel})
+        </Text>
+        <Text style={styles.upgradeDescription}>{upgrade.description}</Text>
+      </View>
+
+      <Pressable
+        style={[
+          styles.buyButton1,
+          (!isUnlocked || !canAfford) && styles.disabledButton,
+        ]}
+        onPress={handlePurchase}
+        disabled={!isUnlocked || !canAfford}
+      >
+        <View style={{    flexDirection: "row",
+    alignItems: "center"}}>
+          <Text style={styles.buyButtonText}>{cost}</Text>
+          <Image
+            source={require("../../assets/images/ascension.png")}
+            style={{ width: 18, height: 18, marginRight: 6 }}
+          />
+        </View>
       </Pressable>
     </View>
   );
@@ -202,9 +289,10 @@ const EvolutionTimeline = () => {
       >
         {evolutionChain.map((pokemonId, index) => {
           const pokemonData = pokemonDatabase[pokemonId];
-          const isLocked = index > currentIndex;
+          const isLocked =
+            index > currentIndex && gameState.ascensionCount === 0;
           const isActive = index === currentIndex;
-          const unlockLevel = pokemonData.evolutionLevel
+          const unlockLevel = pokemonData.evolutionLevel;
           return (
             <View key={pokemonId} style={styles.pokemonIconContainer}>
               <View
@@ -221,7 +309,7 @@ const EvolutionTimeline = () => {
               </View>
               {isLocked && (
                 <View style={styles.lockIconContainer}>
-                  <BackgroundGradient color="black" topOffset={-6}/>
+                  <BackgroundGradient color="black" topOffset={-6} />
 
                   <FontAwesome5 name="lock" size={24} color="white" />
                   <Text style={styles.unlockText}>Ур. {unlockLevel}</Text>
@@ -260,6 +348,14 @@ export default function UpgradesScreen() {
         {Object.values(upgradesDatabase).map((upgrade) => (
           <UpgradeItem key={upgrade.id} upgrade={upgrade} />
         ))}
+
+        <View style={{ marginTop: 10 }}>
+          <Text style={styles.sectionHeader}>Улучшения вознесения</Text>
+
+          {Object.values(ascensionUpgradesDatabase).map((u) => (
+            <AscensionUpgradeItem key={u.id} upgrade={u} />
+          ))}
+        </View>
       </ScrollView>
 
       {/* Timeline теперь находится за пределами ScrollView, внизу */}
@@ -376,7 +472,20 @@ const styles = StyleSheet.create({
   unlockText: {
     marginTop: 4,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.darkGray,
   },
+  lockedCard: {
+    opacity: 0.65,
+  },
+  buyButton1: {
+    backgroundColor: Colors.accent,
+    paddingLeft: 30,
+    paddingRight: 20,
+    paddingVertical: 10,
+    borderRadius: 30,
+  },
+  buyButton1Disabled: {
+    backgroundColor: Colors.lightGray
+  }
 });
