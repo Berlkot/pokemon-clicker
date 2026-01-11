@@ -80,7 +80,7 @@ export const ascensionUpgradesDatabase: Record<string, AscensionUpgrade> = {
     id: "time_warper",
     icon: "clock",
     title: "Искривление времени",
-    description: "Сокращает перезарядку миниигр на 1 секунду за уровень (с нижним лимитом в коде).",
+    description: "Сокращает перезарядку миниигр на 1 секунду за уровень.",
     baseCost: 2,
   },
 }
