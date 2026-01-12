@@ -204,7 +204,6 @@ export default function ModalScreen() {
   return (
     <View>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <Text style={styles.title}>Настройки</Text>
         <View style={styles.settingsGroup}>
           <Text style={styles.groupTitle}>Аккаунт</Text>
           {session ? (
